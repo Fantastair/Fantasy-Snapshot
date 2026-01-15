@@ -25,10 +25,22 @@ class Debug:
     process: subprocess.Popen | None = None
 
     @staticmethod
-    def open_debug_window():
+    def open_debug_window(left: int = 0, top: int = 0, width: int = 1280, height: int = 720, close_with_main: bool = True):
         """
         启动调试窗口子进程。
+        Args:
+            left (int): 窗口左上角的 X 坐标位置。
+            top (int): 窗口左上角的 Y 坐标位置。
+            width (int): 窗口宽度（像素）。
+            height (int): 窗口高度（像素）。
+            close_with_main (bool): 主进程关闭时是否关闭调试窗口子进程。
         """
+        # 先关闭已有的调试窗口
+        Debug.close_debug_window()
+        if close_with_main:
+            atexit.register(Debug.close_debug_window)
+        else:
+            atexit.unregister(Debug.close_debug_window)
         # 设置子进程的环境变量，确保可以找到 fantas 包
         import os
         env = os.environ.copy()
@@ -38,7 +50,7 @@ class Debug:
         ])
         # 使用同一个 Python 解释器，构建命令行参数
         import sys
-        cmd = [sys.executable, str(fantas.package_path() / "debug_window.py")]
+        cmd = [sys.executable, str(fantas.package_path() / "debug_window.py"), str(left), str(top), str(width), str(height)]
 
         try:
             Debug.process = subprocess.Popen(
@@ -53,9 +65,7 @@ class Debug:
 
     @staticmethod
     def close_debug_window():
-        """
-        关闭调试窗口子进程。
-        """
+        """ 关闭调试窗口子进程。 """
         if Debug.process is not None and Debug.process.stdin is not None:
             Debug.process.stdin.close()
         if Debug.process is not None and Debug.process.poll() is None:
@@ -66,10 +76,21 @@ class Debug:
     def send_debug_command(msg: str):
         """
         发送调试命令到调试窗口子进程。
+        Args:
+            msg (str): 要发送的调试命令字符串。
+        Raises:
+            RuntimeError: 如果调试窗口未启动则抛出此异常。
         """
         if Debug.process is None or Debug.process.stdin is None:
             raise RuntimeError("调试窗口未启动，无法发送调试命令。")
         Debug.process.stdin.write(msg + "\n")
         Debug.process.stdin.flush()
-
-atexit.register(Debug.close_debug_window)
+    
+    @staticmethod
+    def is_debug_window_open() -> bool:
+        """
+        检查调试窗口子进程是否正在运行。
+        Returns:
+            is_open (bool): 如果调试窗口正在运行则返回 True，否则返回 False。
+        """
+        return Debug.process is not None and Debug.process.poll() is None

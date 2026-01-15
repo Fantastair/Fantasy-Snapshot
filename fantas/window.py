@@ -25,6 +25,8 @@ class WindowConfig:
     resizable: bool = False
     # 窗口帧率
     fps: int = 60
+    # 窗口是否在创建时获得鼠标焦点
+    mouse_focus: bool = True
 del dataclass
 
 class Window(pygame.Window):
@@ -43,7 +45,8 @@ class Window(pygame.Window):
             size=window_config.window_size,
             position=window_config.window_position,
             borderless=window_config.borderless,
-            resizable=window_config.resizable
+            resizable=window_config.resizable,
+            mouse_focus=window_config.mouse_focus,
         )
 
         self.clock = pygame.time.Clock()     # 用于控制帧率的时钟对象
@@ -51,7 +54,7 @@ class Window(pygame.Window):
 
         self.screen = self.get_surface()     # 窗口的主 Surface 对象
         self.renderer = fantas.Renderer()    # 窗口的渲染器对象
-        self.root_ui: fantas.UI = None       # 窗口的根 UI 元素
+        self.root_ui: fantas.UI = fantas.ColorBackground()    # 窗口的根 UI 元素
 
     def mainloop(self):
         """
@@ -61,7 +64,10 @@ class Window(pygame.Window):
             self.clock.tick(self.fps)    # 限制帧率
             # 处理事件
             for event in pygame.event.get():
+                if fantas.Debug.is_debug_window_open():
+                    fantas.Debug.send_debug_command(str(event))
                 if event.type == fantas.WINDOWCLOSE:
+                    self.destroy()
                     return
             # 生成渲染命令
             self.renderer.pre_render(self.root_ui)
@@ -69,3 +75,5 @@ class Window(pygame.Window):
             self.renderer.render(self.screen)
             # 更新窗口显示
             self.flip()
+
+

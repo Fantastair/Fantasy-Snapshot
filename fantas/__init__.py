@@ -28,6 +28,11 @@ import pygame.freetype
 pygame.init()
 pygame.freetype.init()
 
+# 导入 Pygame 的各个子模块以简化引用
+import pygame.event as event
+import pygame.time as time
+from pygame.display import get_desktop_sizes
+
 # 导入 fantas 包的各个子模块
 from fantas.constants import *    # 常量定义
 from fantas.window    import *    # 窗口管理
