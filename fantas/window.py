@@ -15,18 +15,18 @@ class WindowConfig:
     窗口配置数据类，包含创建窗口所需的各种参数。
     Args:
         title (str): 窗口标题。
-        window_size (tuple[int, int]): 窗口尺寸（宽, 高）（像素）。
-        window_position (tuple[int, int] | int): 窗口位置（x, y）或预设常量 fantas.WINDOWPOS_CENTERED / fantas.WINDOWPOS_UNDEFINED。
+        window_size (fantas.IntPoint): 窗口尺寸（宽, 高）（像素）。
+        window_position (fantas.IntPoint | int): 窗口位置（x, y）或预设常量 fantas.WINDOWPOS_CENTERED / fantas.WINDOWPOS_UNDEFINED。
         borderless (bool): 窗口是否无边框。
         resizable (bool): 是否可以调整窗口大小。
         fps (int): 窗口帧率。
         mouse_focus (bool): 窗口是否在创建时获得鼠标焦点。
         input_focus (bool): 窗口是否在创建时获得输入焦点。
-        allow_high_dpi (bool): 是否允许高DPI显示。
+        allow_high_dpi (bool): 是否允许高 DPI 显示。
     """
     title          : str                   = "Fantas Window"
-    window_size    : tuple[int, int]       = (1280, 720)
-    window_position: tuple[int, int] | int = fantas.WINDOWPOS_UNDEFINED
+    window_size    : fantas.IntPoint       = (1280, 720)
+    window_position: fantas.IntPoint | int = fantas.WINDOWPOS_UNDEFINED
     borderless     : bool                  = False
     resizable      : bool                  = False
     fps            : int                   = 60
@@ -70,10 +70,11 @@ class Window(PygameWindow):
         self.remove: callable = self.root_ui.remove
         self.pop   : callable = self.root_ui.pop
         self.clear : callable = self.root_ui.clear
-        # 方便访问事件处理器的添加监听器方法
-        self.add_event_listener: callable = self.event_handler.add_event_listener
+        # 方便访问事件处理器的管理监听器方法
+        self.add_event_listener   : callable = self.event_handler.add_event_listener
+        self.remove_event_listener: callable = self.event_handler.remove_event_listener
         # 注册窗口关闭事件的默认处理器
-        self.add_event_listener(fantas.WINDOWCLOSE, self.root_ui, self.close)        
+        self.add_event_listener(fantas.WINDOWCLOSE, self.root_ui, self.handle_windowclose_event)
         # 设置事件处理器的窗口事件焦点
         self.event_handler.set_focus(fantas.EventCategory.WINDOW, self.root_ui)
 
@@ -93,10 +94,11 @@ class Window(PygameWindow):
             self.renderer.render(self.screen)
             # 更新窗口显示
             self.flip()
+        self.destroy()
     
-    def close(self, event: fantas.Event):
+    def handle_windowclose_event(self, event: fantas.Event):
         """
-        关闭窗口并释放资源。
+        处理窗口关闭事件。
         Args:
             event (fantas.Event): 关闭事件对象。
         """

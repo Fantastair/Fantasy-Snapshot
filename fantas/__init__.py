@@ -65,7 +65,7 @@ ColorLike: TypeAlias = pygame.typing.ColorLike    # 颜色类型
 from pygame import Color                          # 颜色类
 
 Point:     TypeAlias = pygame.typing.Point        # 点类
-# IntPoint:  TypeAlias = pygame.typing.IntPoint     # 整数点类
+IntPoint:  TypeAlias = pygame.typing.IntPoint     # 整数点类
 # from pygame.math import Vector2                   # 二维向量类
 # from pygame.math import Vector3                   # 三维向量类
 

@@ -15,7 +15,7 @@ class NodeBase:
 
     def append(self, node: NodeBase):
         """
-        添加 node 节点至最后子节点，node 的子节点会跟随 node
+        添加 node 节点至最后子节点。
         如果 node 已有父节点，则会先将 node 从其父节点中移除
         Args:
             node (NodeBase): 要添加的节点
@@ -30,8 +30,8 @@ class NodeBase:
         插入 node 至 index 位置
         如果 node 已有父节点，则会先将 node 从其父节点中移除
         Args:
-            node (NodeBase): 要插入的节点
             index (int): 插入位置索引
+            node (NodeBase): 要插入的节点
         """
         if not node.is_root():
             node.leave()
@@ -41,13 +41,16 @@ class NodeBase:
     def remove(self, node: NodeBase):
         """
         从自己的子节点中移除 node
-        试图移除不存在的节点是安全的
         Args:
             node (NodeBase): 要移除的节点
+        Raises:
+            ValueError: 要移除的节点不是当前节点的子节点
         """
-        if node in self.children:
+        try:
             self.children.remove(node)
             node.father = None
+        except ValueError:
+            raise ValueError("要移除的节点不是当前节点的子节点。") from None
 
     def pop(self, index: int) -> NodeBase:
         """
@@ -56,10 +59,15 @@ class NodeBase:
             index (int): 要移除节点的位置索引
         Returns:
             node (NodeBase): 被移除的节点
+        Raises:
+            IndexError: 索引越界
         """
-        node = self.children.pop(index)
-        node.father = None
-        return node
+        try:
+            node = self.children.pop(index)
+            node.father = None
+            return node
+        except IndexError:
+            raise IndexError("索引越界。") from None
 
     def leave(self):
         """ 从父节点中移除 """

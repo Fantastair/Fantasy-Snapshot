@@ -35,10 +35,10 @@ SurfaceRenderCommand(
 ) -> SurfaceRenderCommand
 ```
 
-参数：
+### 参数
 
-- surface (fantas.Surface): 要绘制的 Surface 对象。
-- dest_rect (fantas.Rect): 绘制的矩形区域（相对于目标 Surface）。
+- **surface (fantas.Surface)**: 要绘制的 Surface 对象。
+- **dest_rect (fantas.Rect)**: 绘制的矩形区域（相对于目标 Surface）。
 
 ## fantas.ColorFillCommand
 
@@ -52,10 +52,10 @@ ColorFillCommand(
 ) -> ColorFillCommand
 ```
 
-参数：
+### 参数
 
-- color (fantas.ColorLike): 用于填充的颜色。
-- dest_rect (fantas.RectLike | None): 目标矩形区域，指定填充的位置和大小，如果设为 None，则会填满整个目标 Surface（这通常用于覆盖内容，比如纯色背景）。
+- **color (fantas.ColorLike)**: 用于填充的颜色。
+- **dest_rect (fantas.RectLike | None)**: 目标矩形区域，指定填充的位置和大小，如果设为 None，则会填满整个目标 Surface（这通常用于覆盖内容，比如纯色背景）。
 
 ## fantas.ColorTextLineRenderCommand
 
@@ -72,10 +72,10 @@ ColorTextLineRenderCommand(
 ) -> ColorTextLineRenderCommand
 ```
 
-参数：
+### 参数
 
-- text (str): 要渲染的文本内容
-- font (fantas.Font): 字体对象
-- size (float): 字体大小
-- fgcolor (fantas.ColorLike | None): 文字颜色
-- dest_rect (fantas.RectLike): 目标矩形区域，指定文本的渲染位置和大小
+- **text (str)**: 要渲染的文本内容
+- **font (fantas.Font)**: 字体对象
+- **size (float)**: 字体大小
+- **fgcolor (fantas.ColorLike | None)**: 文字颜色
+- **dest_rect (fantas.RectLike)**: 目标矩形区域，指定文本的渲染位置和大小
