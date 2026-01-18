@@ -19,11 +19,12 @@ class ColorLabel(fantas.UI):
         Args:
             offset (fantas.Point): 当前元素的偏移位置，用于计算子元素的绝对位置。
         Yields:
-            RenderCommandLike: 渲染命令对象。
+            RenderCommand: 渲染命令对象。
         """
         rect = self.rect.move(offset)
         yield fantas.ColorFillCommand(
+            creator=self,
             color=self.color,
-            dest_rect=rect
+            dest_rect=rect,
         )
         yield from fantas.UI.create_render_commands(self, rect.topleft)

@@ -22,25 +22,35 @@ os.environ['SDL_VIDEO_WAYLAND_ALLOW_LIBDECOR'] = '0'        # 禁用 Wayland Lib
 os.environ['SDL_WINDOWS_ENABLE_MESSAGELOOP'] = '1'          # 启用 Windows 消息循环
 os.environ['SDL_QUIT_ON_LAST_WINDOW_CLOSE'] = '1'           # 在最后一个窗口关闭时退出应用程序
 
+# 提供 fantas 包的路径获取函数
+from pathlib   import Path
+from importlib import resources
+def package_path() -> Path:
+    """
+    获取 fantas 包的目录路径。
+    Returns:
+        path (Path): 模块所在的文件系统路径。
+    """
+    return Path(resources.files(__name__))
+
 # 初始化 Pygame
 import pygame
 import pygame.freetype
 pygame.init()
 pygame.freetype.init()
 
-# 导入 Pygame 的各个子模块以简化引用
-import pygame.event as event
+# 导入 Pygame 的子模块以简化引用
 import pygame.time as time
-from pygame.display import get_desktop_sizes
+import pygame.event as event
 
 # 导入 fantas 包的各个子模块
-from fantas.constants import *    # 常量定义
-from fantas.window    import *    # 窗口管理
-from fantas.debug     import *    # 调试功能
-from fantas.renderer  import *    # 渲染器和渲染命令
-from fantas.nodebase  import *    # 节点基类
-from fantas.ui        import *    # UI 基类
-
+from fantas.constants     import *    # 常量定义
+from fantas.window        import *    # 窗口管理
+from fantas.debug         import *    # 调试功能
+from fantas.renderer      import *    # 渲染器和渲染命令
+from fantas.event_handler import *    # 事件处理
+from fantas.nodebase      import *    # 节点基类
+from fantas.ui            import *    # UI 基类
 from fantas.background_ui import *    # 背景 UI
 from fantas.label_ui      import *    # 标签 UI
 from fantas.text_ui       import *    # 文字 UI
@@ -55,18 +65,12 @@ ColorLike: TypeAlias = pygame.typing.ColorLike    # 颜色类型
 from pygame import Color                          # 颜色类
 
 Point:     TypeAlias = pygame.typing.Point        # 点类
-IntPoint:  TypeAlias = pygame.typing.IntPoint     # 整数点类
-from pygame.math import Vector2                   # 二维向量类
-from pygame.math import Vector3                   # 三维向量类
+# IntPoint:  TypeAlias = pygame.typing.IntPoint     # 整数点类
+# from pygame.math import Vector2                   # 二维向量类
+# from pygame.math import Vector3                   # 三维向量类
 
 from pygame import Surface          # 表面类
-
+from pygame.event import Event      # 事件类
 from pygame.freetype import Font    # 字体类
 
-RenderCommandLike: TypeAlias = Union[             # 渲染命令
-    SurfaceRenderCommand,
-    ColorFillCommand,
-    ColorTextLineRenderCommand
-]
-
-# del Union, TypeAlias, pygame, os
+del Union, TypeAlias, pygame, os

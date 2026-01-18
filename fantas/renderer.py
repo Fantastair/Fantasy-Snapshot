@@ -6,42 +6,46 @@ import fantas
 
 __all__ = (
     "Renderer",
+    "RenderCommand",
     "SurfaceRenderCommand",
     "ColorFillCommand",
     "ColorTextLineRenderCommand",
 )
 
 class Renderer:
+    """
+    渲染器类，管理渲染命令队列并执行渲染操作。
+    """
     def __init__(self):
         self.queue = deque()    # 渲染命令队列，左端入右端出
-    
-    def render(self, target_surface: fantas.Surface):
-        """
-        执行渲染队列中的所有渲染命令。
-        Args:
-            target_surface (fantas.Surface): 目标 Surface 对象，渲染结果将绘制到该对象上。
-        """
-        while self.queue:
-            command = self.queue.pop()
-            command.render(target_surface)
-        
+
     def pre_render(self, root_ui: fantas.UI):
         """
         预处理渲染命令，从根 UI 元素生成渲染命令并添加到渲染队列中。
         Args:
             root_ui (fantas.UI): 根 UI 元素。
         """
+        self.queue.clear()
         for command in root_ui.create_render_commands():
-            self.queue.appendleft(command)
+            self.queue.append(command)
 
-    def add_command(self, command: fantas.RenderCommandLike):
+    def render(self, target_surface: fantas.Surface):
+        """
+        执行渲染队列中的所有渲染命令。
+        Args:
+            target_surface (fantas.Surface): 目标 Surface 对象，渲染结果将绘制到该对象上。
+        """
+        for command in self.queue:
+            command.render(target_surface)
+
+    def add_command(self, command: fantas.RenderCommand):
         """
         向渲染队列中添加一个渲染命令。
         Args:
-            command (fantas.RenderCommandLike): 渲染命令对象，必须实现 render(target_surface) 方法。
+            command (fantas.RenderCommand): 渲染命令对象，必须实现 render(target_surface) 方法。
         """
         self.queue.appendleft(command)
-    
+
     def clear_commands(self):
         """
         清空渲染命令队列。
@@ -49,7 +53,22 @@ class Renderer:
         self.queue.clear()
 
 @dataclass(slots=True)
-class SurfaceRenderCommand:
+class RenderCommand:
+    """
+    渲染命令基类，所有具体渲染命令类应继承自此类并实现 render 方法。
+    """
+    creator: fantas.UI    # 创建此渲染命令的 UI 元素
+
+    def render(self, target_surface: fantas.Surface):
+        """
+        执行渲染操作，将渲染结果绘制到目标 Surface 上。
+        Args:
+            target_surface (fantas.Surface): 目标 Surface 对象，渲染结果将绘制到该对象上。
+        """
+        raise NotImplementedError("子类未实现 render 方法。")
+
+@dataclass(slots=True)
+class SurfaceRenderCommand(RenderCommand):
     """
     Surface 渲染命令类，表示将一个 Surface 渲染到目标矩形区域。
     """
@@ -65,7 +84,7 @@ class SurfaceRenderCommand:
         target_surface.blit(self.surface, self.dest_rect)
 
 @dataclass(slots=True)
-class ColorFillCommand:
+class ColorFillCommand(RenderCommand):
     """
     颜色填充命令类，表示在目标矩形区域内填充指定颜色。
     """
@@ -81,7 +100,7 @@ class ColorFillCommand:
         target_surface.fill(self.color, self.dest_rect)
 
 @dataclass(slots=True)
-class ColorTextLineRenderCommand:
+class ColorTextLineRenderCommand(RenderCommand):
     """
     文字渲染命令类，表示将文本渲染到目标矩形区域。
     """

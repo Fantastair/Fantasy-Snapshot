@@ -1,9 +1,9 @@
 import fantas
 
-window_config = fantas.WindowConfig()
-window_config.title = "Fantas3 Demo"
-window_config.window_size = (1920, 1080)
-
+window_config = fantas.WindowConfig(
+    title = "Fantas3 Demo",
+    window_size = (1920, 1080),
+)
 window = fantas.Window(window_config)
 
 background = window.root_ui
@@ -17,6 +17,6 @@ test_text.text = "Hello World!"
 test_text.size = 48.0
 test_label.append(test_text)
 
-fantas.Debug.open_debug_window(1700, 0, 2150, 720)
+# fantas.Debug.open_debug_window(0, 0, 2560, (1600 - window.size[1]) // 2 - 50)
 
 window.mainloop()

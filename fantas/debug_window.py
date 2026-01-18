@@ -16,13 +16,13 @@ class DebugWindow(fantas.Window):
         super().__init__(window_config)
         self.command_queue = Queue()    # 用于接收调试命令的队列
         # 启动后台线程读取标准输入
-        threading.Thread(target=self._read_stdin, daemon=True).start()
+        threading.Thread(target=self.read_debug_command, daemon=True).start()
 
+        # 初始化事件显示
         self.top_pos = 0
         self.line_height = 24
         self.total_lines = window_config.window_size[1] // self.line_height
         self.space = 4
-
         for i in range(self.total_lines):
             c = 255 * (i + 1) / self.total_lines
             text_line = fantas.ColorTextLine(
@@ -37,18 +37,26 @@ class DebugWindow(fantas.Window):
         # 进入主循环
         self.mainloop()
 
-    def _read_stdin(self):
+    def read_debug_command(self):
         """
         从标准输入读取调试命令并放入队列。
         """
         for line in iter(sys.stdin.readline, ''):
             self.command_queue.put(line.rstrip('\n'))
-
+    
+    def write_debug_output(self, msg: str):
+        """
+        写入调试输出信息到标准输出。
+        Args:
+            msg (str): 要写入的调试信息字符串。
+        """
+        print(msg, flush=True)
 
     def mainloop(self):
         """
         进入窗口的主事件循环，处理事件直到窗口关闭。
         """
+        self.write_debug_output("started")
         while True:
             self.clock.tick(self.fps)    # 限制帧率
             # 处理事件
@@ -83,4 +91,5 @@ debugwindow_config.title = "调试窗口"
 debugwindow_config.window_size = (int(sys.argv[3]), int(sys.argv[4]))
 debugwindow_config.window_position = (int(sys.argv[1]), int(sys.argv[2]))
 debugwindow_config.mouse_focus = False
+debugwindow_config.input_focus = False
 debug_window = DebugWindow(debugwindow_config)

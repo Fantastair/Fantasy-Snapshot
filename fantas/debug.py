@@ -1,28 +1,17 @@
-"""
-此模块不会被自动导入。
-"""
 import atexit
+import threading
 import subprocess
-from pathlib import Path
-from importlib import resources
+from queue import Queue
 
 import fantas
 
 __all__ = (
-    "package_path",
     "Debug",
 )
 
-def package_path() -> Path:
-    """
-    获取 fantas 包的目录路径。
-    Returns:
-        path (Path): 模块所在的文件系统路径。
-    """
-    return Path(resources.files(__name__))
-
 class Debug:
-    process: subprocess.Popen | None = None
+    process: subprocess.Popen | None = None    # 调试窗口子进程对象
+    queue: Queue = Queue()                     # 调试子进程返回队列
 
     @staticmethod
     def open_debug_window(left: int = 0, top: int = 0, width: int = 1280, height: int = 720, close_with_main: bool = True):
@@ -55,11 +44,14 @@ class Debug:
         try:
             Debug.process = subprocess.Popen(
                 cmd,
-                stdin=subprocess.PIPE,    # 通信管道
-                text=True,                # 文本模式，自动编码/解码
-                bufsize=1,                # 行缓冲
-                env=env,                  # 子进程环境变量
+                stdin=subprocess.PIPE,     # 发送信息通信管道
+                stdout=subprocess.PIPE,    # 接收信息通信管道
+                text=True,                 # 文本模式，自动编码/解码
+                bufsize=1,                 # 行缓冲
+                env=env,                   # 子进程环境变量
             )
+            # 启动后台线程读取子进程输出
+            threading.Thread(target=Debug.read_debug_output, daemon=True).start()
         except FileNotFoundError as e:
             raise RuntimeError(f"命令{cmd}出错，无法启动调试窗口:") from e
 
@@ -85,6 +77,14 @@ class Debug:
             raise RuntimeError("调试窗口未启动，无法发送调试命令。")
         Debug.process.stdin.write(msg + "\n")
         Debug.process.stdin.flush()
+    
+    @staticmethod
+    def read_debug_output():
+        """
+        从调试窗口子进程读取输出信息并放入队列。
+        """
+        for line in iter(Debug.process.stdout.readline, ''):
+            Debug.queue.put(line.rstrip('\n'))
     
     @staticmethod
     def is_debug_window_open() -> bool:

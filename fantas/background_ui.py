@@ -18,7 +18,10 @@ class ColorBackground(fantas.UI):
         Args:
             offset (fantas.Point): 当前元素的偏移位置，用于计算子元素的绝对位置。
         Yields:
-            RenderCommandLike: 渲染命令对象。
+            RenderCommand: 渲染命令对象。
         """
-        yield fantas.ColorFillCommand(color=self.color)
+        yield fantas.ColorFillCommand(
+            creator=self,
+            color=self.color,
+        )
         yield from fantas.UI.create_render_commands(self, offset)
