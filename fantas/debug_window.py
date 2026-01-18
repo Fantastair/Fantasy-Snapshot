@@ -31,7 +31,7 @@ class DebugWindow(fantas.Window):
                 size=self.line_height - self.space,
                 rect=fantas.Rect(10, self.space / 2 + i * self.line_height, 0, 0),
             )
-            self.root_ui.append(text_line)
+            self._root_ui.append(text_line)
         self.text_index = 0
         
         # 进入主循环
@@ -70,16 +70,16 @@ class DebugWindow(fantas.Window):
                 if self.text_index == self.total_lines - 1:
                     # 滚动文本
                     for i in range(self.total_lines - 1):
-                        line_ui = self.root_ui.children[i]
-                        next_line_ui = self.root_ui.children[i + 1]
+                        line_ui = self._root_ui.children[i]
+                        next_line_ui = self._root_ui.children[i + 1]
                         line_ui.text = next_line_ui.text
-                    self.root_ui.children[self.total_lines - 1].text = cmd
+                    self._root_ui.children[self.total_lines - 1].text = cmd
                 else:
-                    self.root_ui.children[self.text_index].text = cmd
+                    self._root_ui.children[self.text_index].text = cmd
                     self.text_index += 1
                     
             # 生成渲染命令
-            self.renderer.pre_render(self.root_ui)
+            self.renderer.pre_render(self._root_ui)
             # 渲染窗口
             self.renderer.render(self.screen)
             # 更新窗口显示

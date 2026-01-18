@@ -45,11 +45,11 @@ import pygame.event as event
 
 # 导入 fantas 包的各个子模块
 from fantas.constants     import *    # 常量定义
+from fantas.nodebase      import *    # 节点基类
 from fantas.window        import *    # 窗口管理
 from fantas.debug         import *    # 调试功能
 from fantas.renderer      import *    # 渲染器和渲染命令
 from fantas.event_handler import *    # 事件处理
-from fantas.nodebase      import *    # 节点基类
 from fantas.ui            import *    # UI 基类
 from fantas.background_ui import *    # 背景 UI
 from fantas.label_ui      import *    # 标签 UI

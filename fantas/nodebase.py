@@ -65,6 +65,12 @@ class NodeBase:
         """ 从父节点中移除 """
         if self.father is not None:
             self.father.remove(self)
+        
+    def clear(self):
+        """ 移除所有子节点 """
+        for child in self.children:
+            child.father = None
+        self.children.clear()
 
     # === 信息查询方法 ===
 
