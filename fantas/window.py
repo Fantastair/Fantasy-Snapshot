@@ -56,12 +56,12 @@ class Window(PygameWindow):
             allow_high_dpi = window_config.allow_high_dpi,
         )
 
-        self.running      : bool                = True                   # 窗口运行状态标志
-        self.fps          : int                 = window_config.fps      # 窗口帧率设置
-        self.clock        : fantas.time.Clock   = fantas.time.Clock()    # 用于控制帧率的时钟对象
-        self.screen       : fantas.Surface      = self.get_surface()     # 窗口的主 Surface 对象
-        self.renderer     : fantas.Renderer     = fantas.Renderer()      # 窗口的渲染器对象
-        self.root_ui      : fantas.UI           = fantas.UI()            # 窗口的根 UI 元素是一个空的根节点
+        self.running      : bool                = True                     # 窗口运行状态标志
+        self.fps          : int                 = window_config.fps        # 窗口帧率设置
+        self.clock        : fantas.time.Clock   = fantas.time.Clock()      # 用于控制帧率的时钟对象
+        self.screen       : fantas.Surface      = self.get_surface()       # 窗口的主 Surface 对象
+        self.renderer     : fantas.Renderer     = fantas.Renderer(self)    # 窗口的渲染器对象
+        self.root_ui      : fantas.UI           = fantas.UI()              # 窗口的根 UI 元素是一个空的根节点
         self.event_handler: fantas.EventHandler = fantas.EventHandler(window=self)    # 窗口的事件处理器对象
 
         # 方便访问根 UI 元素的方法
@@ -73,8 +73,6 @@ class Window(PygameWindow):
         # 方便访问事件处理器的管理监听器方法
         self.add_event_listener   : callable = self.event_handler.add_event_listener
         self.remove_event_listener: callable = self.event_handler.remove_event_listener
-        # 注册窗口关闭事件的默认处理器
-        self.add_event_listener(fantas.WINDOWCLOSE, self.root_ui, False, self.handle_windowclose_event)
 
     def mainloop(self):
         """
@@ -97,15 +95,6 @@ class Window(PygameWindow):
             self.flip()
         # 退出主循环后销毁窗口
         self.destroy()
-
-    def handle_windowclose_event(self, event: fantas.Event):
-        """
-        处理窗口关闭事件。
-        Args:
-            event (fantas.Event): 关闭事件对象。
-        """
-        if event.window == self:
-            self.running = False
     
     def mainloop_debug(self):
         """

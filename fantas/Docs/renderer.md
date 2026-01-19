@@ -6,11 +6,12 @@
 ## fantas.Renderer
 
 渲染器类，管理渲染命令队列并执行渲染操作。
-`Renderer() -> Renderer`
+`Renderer(window: fantas.Window) -> Renderer`
 
 ### 属性
 
-- **queue (deque): 渲染命令队列。**
+- **window (fantas.Window): 关联的窗口对象。**
+- **queue (deque): 渲染命令队列，左端入右端出。**
 
 ### 方法
 

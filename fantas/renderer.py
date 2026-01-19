@@ -16,7 +16,8 @@ class Renderer:
     """
     渲染器类，管理渲染命令队列并执行渲染操作。
     """
-    def __init__(self):
+    def __init__(self, window: fantas.Window):
+        self.window = window    # 关联的窗口对象
         self.queue = deque()    # 渲染命令队列，左端入右端出
 
     def pre_render(self, root_ui: fantas.UI):
@@ -57,7 +58,7 @@ class Renderer:
         for rc in reversed(self.queue):
             if rc.hit_test(point):
                 return rc.creator
-        return self.root_ui
+        return self.window.root_ui
 
 @dataclass(slots=True)
 class RenderCommand:

@@ -8,6 +8,8 @@ from queue import Queue
 
 import fantas
 
+RECEIVEDDEBUGCOMMAND = fantas.custom_event()    # 用于接收调试命令的自定义事件类型
+
 class DebugWindow(fantas.Window):
     """
     调试窗口类，用于显示调试信息。
@@ -35,7 +37,10 @@ class DebugWindow(fantas.Window):
             )
             self.background.append(text_line)
         self.text_index = 0
-        
+
+        # 注册接收调试命令事件的处理器
+        self.add_event_listener(RECEIVEDDEBUGCOMMAND, self.root_ui, True, self.handle_received_debug_command_event)
+
         # 进入主循环
         self.mainloop()
 
@@ -45,7 +50,8 @@ class DebugWindow(fantas.Window):
         """
         for line in iter(sys.stdin.readline, ''):
             self.command_queue.put(line.rstrip('\n'))
-    
+            fantas.event.post(fantas.Event(RECEIVEDDEBUGCOMMAND))
+
     def write_debug_output(self, msg: str):
         """
         写入调试输出信息到标准输出。
@@ -54,39 +60,23 @@ class DebugWindow(fantas.Window):
         """
         print(msg, flush=True)
 
-    def mainloop(self):
+    def handle_received_debug_command_event(self, event: fantas.Event):
         """
-        进入窗口的主事件循环，处理事件直到窗口关闭。
+        处理接收到的调试命令事件。
+        Args:
+            event (fantas.Event): 接收到的调试命令事件对象。
         """
-        self.write_debug_output("started")
-        while True:
-            self.clock.tick(self.fps)    # 限制帧率
-            # 处理事件
-            for event in fantas.event.get():
-                if event.type == fantas.WINDOWCLOSE:
-                    self.destroy()
-                    return
-            # 处理调试命令
-            while not self.command_queue.empty():
-                cmd = self.command_queue.get()
-                if self.text_index == self.total_lines - 1:
-                    # 滚动文本
-                    for i in range(self.total_lines - 1):
-                        line_ui = self.background.children[i]
-                        next_line_ui = self.background.children[i + 1]
-                        line_ui.text = next_line_ui.text
-                    self.background.children[self.total_lines - 1].text = cmd
-                else:
-                    self.background.children[self.text_index].text = cmd
-                    self.text_index += 1
-                    
-            # 生成渲染命令
-            self.renderer.pre_render(self.root_ui)
-            # 渲染窗口
-            self.renderer.render(self.screen)
-            # 更新窗口显示
-            self.flip()
-
+        cmd = self.command_queue.get()
+        if self.text_index == self.total_lines - 1:
+            # 滚动文本
+            for i in range(self.total_lines - 1):
+                line_ui: fantas.ColorTextLine = self.background.children[i]
+                next_line_ui: fantas.ColorTextLine = self.background.children[i + 1]
+                line_ui.set_text(next_line_ui.text)
+            self.background.children[self.total_lines - 1].set_text(cmd)
+        else:
+            self.background.children[self.text_index].set_text(cmd)
+            self.text_index += 1
 
 debugwindow_config = fantas.WindowConfig()
 debugwindow_config.title = "调试窗口"

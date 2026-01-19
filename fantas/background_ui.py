@@ -14,6 +14,7 @@ class ColorBackground(fantas.UI):
     children: list[fantas.UI]  = field(default_factory=list)                         # 子显示元素列表
     ui_id   : fantas.UIID      = field(default_factory=fantas.generate_unique_id)    # 唯一标识 ID
     bgcolor : fantas.ColorLike = 'black'                                             # 背景颜色
+    color_fill_command: fantas.ColorFillCommand = field(init=False)                  # 颜色填充命令
 
     def __post_init__(self):
         """ 初始化 ColorBackground 实例 """

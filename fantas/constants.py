@@ -13,6 +13,9 @@ __all__ = [
     "EventCategory",
     "event_category_dict",
 
+    "custom_event",
+    "get_event_category",
+
     "WINDOWPOS_UNDEFINED",
     "WINDOWPOS_CENTERED",
 
@@ -20,27 +23,24 @@ __all__ = [
     "MOUSEBUTTONUP",
     "MOUSEMOTION",
     "MOUSEWHEEL",
+    "MOUSEENTERED",
+    "MOUSELEAVED",
+    "MOUSECLICKED",
     "KEYDOWN",
     "KEYUP",
     "TEXTEDITING",
     "TEXTINPUT",
     "WINDOWSHOWN",
     "WINDOWHIDDEN",
-    "WINDOWEXPOSED",
     "WINDOWMOVED",
     "WINDOWRESIZED",
-    "WINDOWSIZECHANGED",
     "WINDOWMINIMIZED",
     "WINDOWMAXIMIZED",
     "WINDOWRESTORED",
-    "WINDOWENTER",
     "WINDOWLEAVE",
     "WINDOWFOCUSGAINED",
     "WINDOWFOCUSLOST",
     "WINDOWCLOSE",
-    "WINDOWTAKEFOCUS",
-    "WINDOWHITTEST",
-    "WINDOWICCPROFCHANGED",
     "WINDOWDISPLAYCHANGED",
 ]
 
@@ -48,11 +48,6 @@ DEFAULTRECT = pygame.Rect(0, 0, 0, 0)       # 默认矩形
 
 DEFAULTFONT = pygame.freetype.Font(None)    # 默认字体
 DEFAULTFONT.origin = True
-
-# 自定义事件
-# MOUSEBUTTONCLICKED = fantas.custom_event()    # 鼠标按钮点击事件
-# MOUSEENTERED       = fantas.custom_event()    # 鼠标进入事件
-# MOUSELEAVED        = fantas.custom_event()    # 鼠标离开事件
 
 class EventCategory(Enum):
     """ 事件分类枚举。 """
@@ -77,20 +72,42 @@ event_category_dict: dict[fantas.EventType, EventCategory] = {
 
     WINDOWSHOWN         : EventCategory.WINDOW,
     WINDOWHIDDEN        : EventCategory.WINDOW,
-    WINDOWEXPOSED       : EventCategory.WINDOW,
     WINDOWMOVED         : EventCategory.WINDOW,
     WINDOWRESIZED       : EventCategory.WINDOW,
-    WINDOWSIZECHANGED   : EventCategory.WINDOW,
     WINDOWMINIMIZED     : EventCategory.WINDOW,
     WINDOWMAXIMIZED     : EventCategory.WINDOW,
     WINDOWRESTORED      : EventCategory.WINDOW,
-    WINDOWENTER         : EventCategory.WINDOW,
     WINDOWLEAVE         : EventCategory.WINDOW,
     WINDOWFOCUSGAINED   : EventCategory.WINDOW,
     WINDOWFOCUSLOST     : EventCategory.WINDOW,
     WINDOWCLOSE         : EventCategory.WINDOW,
-    WINDOWTAKEFOCUS     : EventCategory.WINDOW,
-    WINDOWHITTEST       : EventCategory.WINDOW,
-    WINDOWICCPROFCHANGED: EventCategory.WINDOW,
     WINDOWDISPLAYCHANGED: EventCategory.WINDOW,
 }
+
+def custom_event(event_category: EventCategory = EventCategory.USER) -> fantas.EventType:
+    """
+    生成一个自定义事件类型 id。
+    Args:
+        event_category (fantas.EventCategory): 事件分类，默认为 USER。
+    Returns:
+        fantas.EventType: 自定义事件类型 id。
+    """
+    t = fantas.event.custom_type()
+    event_category_dict[t] = event_category
+    fantas.event.set_allowed(t)
+    return t
+
+def get_event_category(event_type: fantas.EventType) -> EventCategory:
+    """
+    获取事件分类。
+    Args:
+        event_type (fantas.EventType): 事件类型。
+    Returns:
+        fantas.EventCategory: 事件分类枚举值。
+    """
+    return event_category_dict.get(event_type, EventCategory.NONE)
+
+# 自定义事件
+MOUSEENTERED = custom_event(EventCategory.MOUSE)    # 鼠标进入事件
+MOUSELEAVED  = custom_event(EventCategory.MOUSE)    # 鼠标离开事件
+MOUSECLICKED = custom_event(EventCategory.MOUSE)    # 有效单击事件

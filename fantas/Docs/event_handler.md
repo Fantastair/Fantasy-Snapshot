@@ -13,19 +13,12 @@
 - **window (fantas.Window)**: 关联的窗口对象。
 - **active_ui (fantas.UI)**: 当前激活的 UI 元素。
 - **hover_ui (fantas.UI)**: 当前鼠标悬停的 UI 元素。
-- **last_mouse_pos (fantas.IntPoint)**: 上一帧的鼠标位置。
+- **last_hover_pass_path (list[fantas.UI\])**: 上一帧悬停传递路径。
+- **last_pressed_ui (fantas.UI | None)**: 上一次按下的 UI 元素。
 - **listeners (dict[fantas.ListenerKey, list[fantas.ListenerFunc]])**: 事件监听注册表。
   一个字典，键为监听器键（`fantas.ListenerKey`），值为监听器函数列表（`list[fantas.ListenerFunc]`）。可以用一个事件类型、UI 元素唯一标识和是否为捕获阶段的布尔值来唯一确定一个监听函数列表。
 
 ### 方法
-
-- **EventHandler.handle_mousemotion_event()**
-
-  处理鼠标移动事件，更新悬停的 UI 元素。
-
-  `handle_mousemotion_event(event: fantas.Event)`
-
-  - **event (fantas.Event)**: 鼠标移动事件对象。
 
 - **EventHandler.handle_event()**
 
@@ -57,16 +50,68 @@
     - **callback (fantas.ListenerFunc)**: 事件回调函数，接收一个 `fantas.Event` 对象作为参数。
     - **use_capture (bool)**: 是否在捕获阶段调用回调
 
-## 其他函数
+- **EventHandler.set_hover_ui()**
 
-- **custom_event()**
+    设置当前悬停的 UI 元素。
 
-    生成一个自定义事件类型 id.
+    `set_hover_ui(ui_element: fantas.UI)`
 
-    `custom_event() -> fantas.EventType`
+    - **ui_element (fantas.UI)**: 要设置为悬停的 UI 元素。
 
-- **get_event_category()**
+    会触发 `MOUSEENTER` 和 `MOUSELEAVE` 事件。
 
-    获取事件分类。
+- **EventHandler.set_active_ui()**
 
-    `get_event_category(event_type: fantas.EventType) -> fantas.EventCategory`
+    设置当前激活的 UI 元素。
+
+    `set_active_ui(ui_element: fantas.UI)`
+
+    - **ui_element (fantas.UI)**: 要设置为激活的 UI 元素。
+
+- **EventHandler.handle_windowclose_event()**
+
+    处理窗口关闭事件。
+
+    `handle_windowclose_event(event: fantas.Event)`
+
+    - **event (fantas.Event)**: 窗口关闭事件对象。
+  
+- **EventHandler.handle_windowleave_event()**
+
+    处理窗口离开事件。
+
+    `handle_windowleave_event(event: fantas.Event)`
+
+    - **event (fantas.Event)**: 窗口离开事件对象。
+
+    离开窗口后，悬停元素和激活元素均设为根元素。
+
+- **EventHandler.handle_mousemotion_event()**
+
+    处理鼠标移动事件。
+
+    `handle_mousemotion_event(event: fantas.Event)`
+
+    - **event (fantas.Event)**: 鼠标移动事件对象。
+
+    更新悬停元素。
+
+- **EventHandler.handle_mousebuttondown_event()**
+
+    处理鼠标按下事件。
+
+    `handle_mousebuttondown_event(event: fantas.Event)`
+
+    - **event (fantas.Event)**: 鼠标按下事件对象。
+
+    更新激活元素。
+
+- **EventHandler.handle_mousebuttonup_event()**
+
+    处理鼠标释放事件。
+
+    `handle_mousebuttonup_event(event: fantas.Event)`
+
+    - **event (fantas.Event)**: 鼠标释放事件对象。
+
+    判断有效单击，有可能触发 `MOUSECLICK` 事件。

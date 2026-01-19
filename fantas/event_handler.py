@@ -4,32 +4,24 @@ import fantas
 
 __all__ = (
     "EventHandler",
-    "custom_event",
-    "get_event_category",
 )
 
 class EventHandler:
     """ 事件处理器，负责预处理并分发事件。 """
     def __init__(self, window: fantas.Window):
-        self.window        : fantas.Window   = window            # 关联的窗口对象
-        self.active_ui     : fantas.UI       = window.root_ui    # 当前激活的 UI 元素
-        self.hover_ui      : fantas.UI       = window.root_ui    # 当前鼠标悬停的 UI 元素
-        self.last_mouse_pos: fantas.IntPoint = (0, 0)            # 上一帧的鼠标位置
-        self.listeners     : dict[fantas.ListenerKey, list[fantas.ListenerFunc]] = {}    # 事件监听注册表
+        self.window              : fantas.Window    = window              # 关联的窗口对象
+        self.active_ui           : fantas.UI        = window.root_ui      # 当前激活的 UI 元素
+        self.hover_ui            : fantas.UI        = window.root_ui      # 当前鼠标悬停的 UI 元素，None 表示鼠标在窗口外
+        self.last_hover_pass_path: list[fantas.UI]  = [window.root_ui]    # 上一帧的悬停传递路径
+        self.last_pressed_ui     : fantas.UI | None = None                # 上一次按下的 UI 元素 
+        self.listeners           : dict[fantas.ListenerKey, list[fantas.ListenerFunc]] = {}    # 事件监听注册表
 
-        # 注册鼠标移动事件的默认处理器，用于更新悬停的 UI 元素
-        self.add_event_listener(fantas.MOUSEMOTION, self.window.root_ui, True, self.handle_mousemotion_event)
-
-    def handle_mousemotion_event(self, event: fantas.Event):
-        """
-        处理鼠标移动事件，更新悬停的 UI 元素。
-        Args:
-            event (fantas.Event): 鼠标移动事件对象。
-        """
-        # 更新悬停的 UI 元素
-        if event.pos != self.last_mouse_pos:    # 惰性更新
-            self.last_mouse_pos = event.pos
-            self.hover_ui = self.window.renderer.coordinate_hit_test(event.pos)
+        # 注册默认事件的处理器
+        self.add_event_listener(fantas.WINDOWCLOSE,     self.window.root_ui, False, self.handle_windowclose_event)
+        self.add_event_listener(fantas.WINDOWLEAVE,     self.window.root_ui, True,  self.handle_windowleave_event)
+        self.add_event_listener(fantas.MOUSEMOTION,     self.window.root_ui, True,  self.handle_mousemotion_event)
+        self.add_event_listener(fantas.MOUSEBUTTONDOWN, self.window.root_ui, False, self.handle_mousebuttondown_event)
+        self.add_event_listener(fantas.MOUSEBUTTONUP,   self.window.root_ui, False, self.handle_mousebuttonup_event)
 
     def handle_event(self, event: fantas.Event, focused_ui: fantas.UI | None = None):
         """
@@ -41,7 +33,7 @@ class EventHandler:
         # 获取焦点 UI 元素
         if focused_ui is None:
             # 鼠标事件的焦点为当前悬停的 UI 元素，其他事件的焦点为当前激活的 UI 元素
-            focused_ui = self.hover_ui if get_event_category(event.type) == fantas.EventCategory.MOUSE else self.active_ui
+            focused_ui = self.hover_ui if fantas.get_event_category(event.type) == fantas.EventCategory.MOUSE else self.active_ui
         # 构建传递路径
         event_pass_path = focused_ui.get_pass_path()
         # 事件传递 [根节点 -> ... -> 焦点节点（捕获阶段）, 焦点节点 -> ... -> 根节点（冒泡阶段）]
@@ -92,24 +84,86 @@ class EventHandler:
             listener_list.remove(listener)
         except ValueError:
             raise ValueError("监听器不存在。") from None
+    
+    def set_hover_ui(self, ui_element: fantas.UI):
+        """
+        设置当前悬停的 UI 元素。
+        Args:
+            ui_element (fantas.UI): 要设置为悬停的 UI 元素。
+        """
+        self.hover_ui = ui_element
+        # 获取当前悬停传递路径
+        this_hover_pass_path = self.hover_ui.get_pass_path()
+        # 查找最近公共祖先节点索引
+        lca_index = 0    # 最近公共祖先节点索引
+        for i, (last_ui, this_ui) in enumerate(zip(reversed(self.last_hover_pass_path), reversed(this_hover_pass_path))):
+            if last_ui == this_ui:
+                lca_index = i
+            else:
+                break
+        # 触发事件
+        if lca_index < len(self.last_hover_pass_path) - 1:    # 有节点移出
+            self.handle_event(fantas.Event(fantas.MOUSELEAVED, ui=self.last_hover_pass_path[0]), focused_ui=self.last_hover_pass_path[0])
+        if lca_index < len(this_hover_pass_path) - 1:         # 有节点移入
+            self.handle_event(fantas.Event(fantas.MOUSEENTERED, ui=this_hover_pass_path[0]), focused_ui=this_hover_pass_path[0])
+        # 缓存上一帧的悬停传递路径
+        self.last_hover_pass_path = this_hover_pass_path
+    
+    def set_active_ui(self, ui_element: fantas.UI):
+        """
+        设置当前激活的 UI 元素。
+        Args:
+            ui_element (fantas.UI): 要设置为激活的 UI 元素。
+        """
+        self.active_ui = ui_element
+    
+    def handle_windowclose_event(self, event: fantas.Event):
+        """
+        处理窗口关闭事件。
+        Args:
+            event (fantas.Event): 关闭事件对象。
+        """
+        if event.window is self.window:
+            self.window.running = False
 
-def custom_event() -> fantas.EventType:
-    """
-    生成一个自定义事件类型 id。
-    Returns:
-        fantas.EventType: 自定义事件类型 id。
-    """
-    t = fantas.event.custom_type()
-    fantas.event_category_dict[t] = fantas.EventCategory.USER
-    fantas.event.set_allowed(t)
-    return t
+    def handle_windowleave_event(self, event: fantas.Event):
+        """
+        处理窗口离开事件，设置悬停 UI 元素为根节点。
+        Args:
+            event (fantas.Event): 窗口离开事件对象。
+        """
+        if event.window is self.window:
+            self.set_hover_ui(self.window.root_ui)
+            self.set_active_ui(self.window.root_ui)
 
-def get_event_category(event_type: fantas.EventType) -> fantas.EventCategory:
-    """
-    获取事件分类。
-    Args:
-        event_type (fantas.EventType): 事件类型。
-    Returns:
-        fantas.EventCategory: 事件分类枚举值。
-    """
-    return fantas.event_category_dict.get(event_type, fantas.EventCategory.NONE)
+    def handle_mousemotion_event(self, event: fantas.Event):
+        """
+        处理鼠标移动事件，更新悬停的 UI 元素。
+        Args:
+            event (fantas.Event): 鼠标移动事件对象。
+        """
+        # 更新悬停的 UI 元素
+        self.set_hover_ui(self.window.renderer.coordinate_hit_test(event.pos))
+    
+    def handle_mousebuttondown_event(self, event: fantas.Event):
+        """
+        处理鼠标按下事件，更新激活的 UI 元素。
+        Args:
+            event (fantas.Event): 鼠标按下事件对象。
+        """
+        # 更新激活的 UI 元素
+        self.set_active_ui(self.hover_ui)
+        # 更新上一次按下的 UI 元素
+        self.last_pressed_ui = self.hover_ui
+    
+    def handle_mousebuttonup_event(self, event: fantas.Event):
+        """
+        处理鼠标释放事件。
+        Args:
+            event (fantas.Event): 鼠标释放事件对象.
+        """
+        # 判断有效单击
+        if self.last_pressed_ui is self.hover_ui:
+            self.handle_event(fantas.Event(fantas.MOUSECLICKED, ui=self.hover_ui), focused_ui=self.hover_ui)
+        # 清除上一次按下的 UI 元素
+        self.last_pressed_ui = None

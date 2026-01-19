@@ -15,6 +15,7 @@ class ColorLabel(fantas.UI):
     ui_id   : fantas.UIID      = field(default_factory=fantas.generate_unique_id)             # 唯一标识 ID
     bgcolor : fantas.ColorLike = 'black'                                                      # 矩形颜色
     rect    : fantas.RectLike  = field(default_factory=lambda: fantas.Rect(0, 0, 100, 50))    # 矩形区域
+    color_fill_command: fantas.ColorFillCommand = field(init=False)                           # 颜色填充渲染命令
 
     def __post_init__(self):
         """ 初始化 ColorLabel 实例 """

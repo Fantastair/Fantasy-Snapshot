@@ -5,7 +5,7 @@ __all__ = (
     "RectLike", "Rect",
     "ColorLike", "Color",
     "Point", "IntPoint",
-    "Event", "EventType", "IsCapture",
+    "Event", "EventType",
     "UIID", "ListenerKey", "ListenerFunc",
     "Surface",
     "Font",

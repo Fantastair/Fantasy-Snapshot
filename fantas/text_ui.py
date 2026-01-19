@@ -18,6 +18,7 @@ class ColorTextLine(fantas.UI):
     fgcolor   : fantas.ColorLike = 'black'                                            # 文本颜色
     size    : float            = 16.0                                                 # 字体大小
     rect    : fantas.RectLike  = field(default_factory=lambda: fantas.DEFAULTRECT)    # 定位矩形
+    color_text_line_render_command: fantas.ColorTextLineRenderCommand = field(init=False)    # 文字渲染命令对象
 
     def __post_init__(self):
         """ 初始化 ColorTextLine 实例 """
@@ -27,6 +28,7 @@ class ColorTextLine(fantas.UI):
             font      = self.font,
             size      = self.size,
             fgcolor   = self.fgcolor,
+            dest_rect = self.rect,
         )
     
     def set_text(self, text: str):
