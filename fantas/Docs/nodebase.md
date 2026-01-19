@@ -80,3 +80,8 @@
 - **Nodebase.get_index()**
   查询自己在父节点的子节点列表中的索引。
   `get_index() -> int`
+
+- **Nodebase.get_pass_path()**
+  获取从自己到根节点的传递路径。
+  `get_pass_path() -> list[Nodebase]`
+  返回一个列表，包含从自己到根节点的所有节点。

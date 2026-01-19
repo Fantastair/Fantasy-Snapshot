@@ -74,17 +74,18 @@ class Window(PygameWindow):
         self.add_event_listener   : callable = self.event_handler.add_event_listener
         self.remove_event_listener: callable = self.event_handler.remove_event_listener
         # 注册窗口关闭事件的默认处理器
-        self.add_event_listener(fantas.WINDOWCLOSE, self.root_ui, self.handle_windowclose_event)
-        # 设置事件处理器的窗口事件焦点
-        self.event_handler.set_focus(fantas.EventCategory.WINDOW, self.root_ui)
+        self.add_event_listener(fantas.WINDOWCLOSE, self.root_ui, False, self.handle_windowclose_event)
 
     def mainloop(self):
         """
         进入窗口的主事件循环，直到窗口关闭。
         """
+        # 清空事件队列
         fantas.event.clear()
+        # 主循环
         while self.running:
-            self.clock.tick(self.fps)    # 限制帧率
+            # 限制帧率
+            self.clock.tick(self.fps)
             # 处理事件
             for event in fantas.event.get():
                 self.event_handler.handle_event(event)
@@ -94,8 +95,9 @@ class Window(PygameWindow):
             self.renderer.render(self.screen)
             # 更新窗口显示
             self.flip()
+        # 退出主循环后销毁窗口
         self.destroy()
-    
+
     def handle_windowclose_event(self, event: fantas.Event):
         """
         处理窗口关闭事件。
@@ -109,27 +111,35 @@ class Window(PygameWindow):
         """
         以调试模式进入窗口的主事件循环，直到窗口关闭。
         """
+        # === 调试 ===
         if not fantas.Debug.is_debug_window_open():
             raise RuntimeError("调试窗口未打开，无法进入调试主循环。")
-        while True:
-            self.clock.tick(self.fps)    # 限制帧率
+        # === 调试 ===
+        fantas.event.clear()
+        while self.running:
+            # 限制帧率
+            self.clock.tick(self.fps)
             # 处理事件
             for event in fantas.event.get():
-                if fantas.Debug.is_debug_window_open():    # 发送事件信息到调试窗口
+                # === 调试 ===
+                # 发送事件信息到调试窗口
+                if fantas.Debug.is_debug_window_open():
                     fantas.Debug.send_debug_command(str(event))
-                if event.type == fantas.WINDOWCLOSE:
-                    self.destroy()
-                    return
+                # === 调试 ===
+                self.event_handler.handle_event(event)
+            # === 调试 ===
             # 处理调试输出
             while not fantas.Debug.queue.empty():
                 output = fantas.Debug.queue.get()
                 self.handle_debug_output(output)
+            # === 调试 ===
             # 生成渲染命令
-            self.renderer.pre_render(self._root_ui)
+            self.renderer.pre_render(self.root_ui)
             # 渲染窗口
             self.renderer.render(self.screen)
             # 更新窗口显示
             self.flip()
+        self.destroy()
     
     def handle_debug_output(self, output: str):
         """

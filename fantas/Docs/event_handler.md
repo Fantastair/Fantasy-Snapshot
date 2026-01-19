@@ -11,11 +11,21 @@
 ### 属性
 
 - **window (fantas.Window)**: 关联的窗口对象。
-- **focus (dict[fantas.EventCategory, fantas.UI | None])**: 事件焦点映射表，每一分类的事件只会发送给对应焦点所在的传递路径上的 UI 元素进行处理。
-- **listeners (dict[int, dict[tuple[int, bool], list[callable]]])**: 事件监听注册表。
-  本身是一个字典，每一个事件类型都有一个子字典，子字典的键是（UI，是否捕获）元组，值是回调函数列表
+- **active_ui (fantas.UI)**: 当前激活的 UI 元素。
+- **hover_ui (fantas.UI)**: 当前鼠标悬停的 UI 元素。
+- **last_mouse_pos (fantas.IntPoint)**: 上一帧的鼠标位置。
+- **listeners (dict[fantas.ListenerKey, list[fantas.ListenerFunc]])**: 事件监听注册表。
+  一个字典，键为监听器键（`fantas.ListenerKey`），值为监听器函数列表（`list[fantas.ListenerFunc]`）。可以用一个事件类型、UI 元素唯一标识和是否为捕获阶段的布尔值来唯一确定一个监听函数列表。
 
 ### 方法
+
+- **EventHandler.handle_mousemotion_event()**
+
+  处理鼠标移动事件，更新悬停的 UI 元素。
+
+  `handle_mousemotion_event(event: fantas.Event)`
+
+  - **event (fantas.Event)**: 鼠标移动事件对象。
 
 - **EventHandler.handle_event()**
 
@@ -29,29 +39,34 @@
 
     注册事件监听器。
     
-    `add_event_listener(event_type: int, ui_element: fantas.UI, callback: callable, use_capture: bool = False)`
+    `add_event_listener(event_type: fantas.EventType, ui_element: fantas.UI, use_capture: bool, callback: fantas.ListenerFunc)`
 
-    - **event_type (int)**: 事件类型。
+    - **event_type (fantas.EventType)**: 事件类型。
     - **ui_element (fantas.UI)**: 关联的 UI 元素
-    - **callback (callable)**: 事件回调函数，接收一个 `fantas.Event` 对象作为参数。
-    - **use_capture (bool, optional)**: 是否在捕获阶段调用回调
+    - **use_capture (bool)**: 是否在捕获阶段调用回调
+    - **callback (fantas.ListenerFunc)**: 事件回调函数，接收一个 `fantas.Event` 对象作为参数。
 
 - **EventHandler.remove_event_listener()**
 
     移除事件监听器。
 
-    `remove_event_listener(event_type: int, ui_element: fantas.UI, callback: callable, use_capture: bool = False)`
+    `remove_event_listener(event_type: fantas.EventType, ui_element: fantas.UI, use_capture: bool, callback: fantas.ListenerFunc)`
 
-    - **event_type (int)**: 事件类型。
+    - **event_type (fantas.EventType)**: 事件类型。
     - **ui_element (fantas.UI)**: 关联的 UI 元素
-    - **callback (callable)**: 事件回调函数，接收一个 `fantas.Event` 对象作为参数。
-    - **use_capture (bool, optional)**: 是否在捕获阶段调用回调
+    - **callback (fantas.ListenerFunc)**: 事件回调函数，接收一个 `fantas.Event` 对象作为参数。
+    - **use_capture (bool)**: 是否在捕获阶段调用回调
 
-- **EventHandler.set_focus()**
+## 其他函数
 
-    设置指定分类事件的焦点 UI 元素。
+- **custom_event()**
 
-    `set_focus(category: fantas.EventCategory, ui_element: fantas.UI | None)`
+    生成一个自定义事件类型 id.
 
-    - **category (fantas.EventCategory)**: 事件分类。
-    - **ui_element (fantas.UI | None)**: 要设置为焦点的 UI 元素，或 `None` 清除焦点。
+    `custom_event() -> fantas.EventType`
+
+- **get_event_category()**
+
+    获取事件分类。
+
+    `get_event_category(event_type: fantas.EventType) -> fantas.EventCategory`

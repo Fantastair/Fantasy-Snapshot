@@ -18,10 +18,10 @@ class Debug:
         """
         启动调试窗口子进程。
         Args:
-            left (int): 窗口左上角的 X 坐标位置。
-            top (int): 窗口左上角的 Y 坐标位置。
-            width (int): 窗口宽度（像素）。
-            height (int): 窗口高度（像素）。
+            left            (int) : 窗口左上角的 X 坐标位置。
+            top             (int) : 窗口左上角的 Y 坐标位置。
+            width           (int) : 窗口宽度（像素）。
+            height          (int) : 窗口高度（像素）。
             close_with_main (bool): 主进程关闭时是否关闭调试窗口子进程。
         """
         # 先关闭已有的调试窗口

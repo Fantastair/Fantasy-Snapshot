@@ -3,6 +3,41 @@
 > fantas 渲染模块
 这是 fantas 的高级模块（或者说底层模块），只有在你需要自定义显示元素时才需要了解，如果你只使用 fantas 提供的 UI 类，那么你不会接触到这里的内容，不过也可以了解一下 fantas 的底层逻辑。
 
+## fantas.Renderer
+
+渲染器类，管理渲染命令队列并执行渲染操作。
+`Renderer() -> Renderer`
+
+### 属性
+
+- **queue (deque): 渲染命令队列。**
+
+### 方法
+
+- **Renderer.pre_render()**
+  预处理渲染命令，即更新渲染命令队列。
+  `pre_render(root_ui: fantas.UI)`
+  - root_ui (fantas.UI): 根 UI 元素。
+  这个方法会遍历整个 UI 树形结构，生成相应的渲染命令，并将它们添加到渲染命令队列中。
+
+- **Renderer.render()**
+  执行渲染队列中的所有渲染命令。
+  `render(target_surface: fantas.Surface)`
+  - target_surface (fantas.Surface): 目标 Surface 对象，渲染结果将绘制到该对象上。
+
+- **Renderer.add_command()**
+  向渲染队列中添加一个渲染命令。
+  `add_command(command: fantas.RenderCommand)`
+  - command (fantas.RenderCommand): 要添加的渲染命令对象。
+
+- **Renderer.coordinate_hit_test()**
+  坐标命中测试，给出坐标处最上层的 UI 元素。
+  `coordinate_hit_test(point: fantas.IntPoint) -> fantas.UI`
+  
+  - point (fantas.IntPoint): 坐标点（x, y）。
+  
+  返回位于该坐标点处最上层的 UI 元素，如果没有命中任何元素，则返回根节点。
+
 在 fantas 中，所有对窗口内容的绘制都是通过渲染命令实现的，发送渲染命令并不会立即开始渲染，而是会在下一次执行渲染操作时一起绘制并刷新显示。这样做的好处是渲染命令的顺序代表了实际渲染元素的层叠顺序，将原本树形的非线性元素关系转化为顺序的线性关系，有利于事件处理等操作，并且可以集中优化渲染流程以提升性能。
 
 所有的渲染命令都有一个基类：

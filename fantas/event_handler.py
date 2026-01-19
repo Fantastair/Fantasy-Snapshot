@@ -4,136 +4,112 @@ import fantas
 
 __all__ = (
     "EventHandler",
+    "custom_event",
+    "get_event_category",
 )
 
 class EventHandler:
     """ 事件处理器，负责预处理并分发事件。 """
     def __init__(self, window: fantas.Window):
-        self.window: fantas.Window = window    # 关联的窗口对象
+        self.window        : fantas.Window   = window            # 关联的窗口对象
+        self.active_ui     : fantas.UI       = window.root_ui    # 当前激活的 UI 元素
+        self.hover_ui      : fantas.UI       = window.root_ui    # 当前鼠标悬停的 UI 元素
+        self.last_mouse_pos: fantas.IntPoint = (0, 0)            # 上一帧的鼠标位置
+        self.listeners     : dict[fantas.ListenerKey, list[fantas.ListenerFunc]] = {}    # 事件监听注册表
 
-        # 事件焦点映射字典
-        self.focus: dict[fantas.EventCategory, fantas.UI | None] = {
-            fantas.EventCategory.MOUSE   : None,    # 鼠标焦点 UI 元素
-            fantas.EventCategory.KEYBOARD: None,    # 键盘焦点 UI 元素
-            fantas.EventCategory.INPUT   : None,    # 输入焦点 UI 元素
-            fantas.EventCategory.WINDOW  : None,    # 窗口焦点 UI 元素
-            fantas.EventCategory.USER    : None,    # 用户自定义事件焦点 UI 元素
-        }
+        # 注册鼠标移动事件的默认处理器，用于更新悬停的 UI 元素
+        self.add_event_listener(fantas.MOUSEMOTION, self.window.root_ui, True, self.handle_mousemotion_event)
 
+    def handle_mousemotion_event(self, event: fantas.Event):
         """
-        事件监听注册表，是一个字典
-        字典内的键值对为 事件类型: 另一个字典
-        二级字典的键值对为 (UI 元素, 是否使用捕获阶段): 回调函数列表
-        {
-            event_type (int): {
-                (ui_id (int), use_capture (bool)): [callback1, callback2, ...]
-            }
-        }
+        处理鼠标移动事件，更新悬停的 UI 元素。
+        Args:
+            event (fantas.Event): 鼠标移动事件对象。
         """
-        self.listeners: dict[int, dict[tuple[int, bool], list[callable]]] = {}
-        for event_type in fantas.event_category_dict.keys():
-            self.listeners[event_type] = {}
+        # 更新悬停的 UI 元素
+        if event.pos != self.last_mouse_pos:    # 惰性更新
+            self.last_mouse_pos = event.pos
+            self.hover_ui = self.window.renderer.coordinate_hit_test(event.pos)
 
-    def handle_event(self, event: fantas.Event):
+    def handle_event(self, event: fantas.Event, focused_ui: fantas.UI | None = None):
         """
         处理单个事件。
         Args:
-            event (fantas.Event): 要处理的事件对象。
+            event      (fantas.Event)    : 要处理的事件对象。
+            focused_ui (fantas.UI | None): 事件传递的焦点 UI 元素，为 None 会自动确认焦点。
         """
-        # 获取事件分类
-        event_category = fantas.get_event_category(event.type)
-        # 如果事件有分类
-        if event_category != fantas.EventCategory.NONE:
-            # 获取该分类的焦点 UI 元素
-            focused_ui = self.focus[event_category]
-            # 如果焦点 UI 元素不为空
-            if focused_ui is not None:
-                # 构建传递路径
-                event_pass_path = [focused_ui]
-                focused_ui = focused_ui.father
-                while focused_ui is not None:
-                    event_pass_path.append(focused_ui)
-                    focused_ui = focused_ui.father
-                # 获取该事件类型的监听器字典
-                event_listeners = self.listeners[event.type]
-                # 如果有监听器注册
-                if event_listeners:
-                    # 事件传递 [根节点 -> ... -> 焦点节点（捕获阶段）, 焦点节点 -> ... -> 根节点（冒泡阶段）]
-                    for ui in reversed(event_pass_path):
-                        # 捕获阶段
-                        # 依次调用回调函数
-                        for callback in event_listeners.get((ui.ui_id, True), []):
-                            # 如果回调函数返回 True，停止事件传递
-                            if callback(event):
-                                return
-                    for ui in event_pass_path:
-                        # 冒泡阶段
-                        # 依次调用回调函数
-                        for callback in event_listeners.get((ui.ui_id, False), []):
-                            # 如果回调函数返回 True，停止事件传递
-                            if callback(event):
-                                return
+        # 获取焦点 UI 元素
+        if focused_ui is None:
+            # 鼠标事件的焦点为当前悬停的 UI 元素，其他事件的焦点为当前激活的 UI 元素
+            focused_ui = self.hover_ui if get_event_category(event.type) == fantas.EventCategory.MOUSE else self.active_ui
+        # 构建传递路径
+        event_pass_path = focused_ui.get_pass_path()
+        # 事件传递 [根节点 -> ... -> 焦点节点（捕获阶段）, 焦点节点 -> ... -> 根节点（冒泡阶段）]
+        for ui in reversed(event_pass_path):
+            # 捕获阶段
+            # 依次调用回调函数
+            for callback in self.listeners.get((event.type, ui.ui_id, True), []):
+                # 如果回调函数返回 True，停止事件传递
+                if callback(event):
+                    return
+        for ui in event_pass_path:
+            # 冒泡阶段
+            # 依次调用回调函数
+            for callback in self.listeners.get((event.type, ui.ui_id, False), []):
+                # 如果回调函数返回 True，停止事件传递
+                if callback(event):
+                    return
     
-    def add_event_listener(self, event_type: int, ui_element: fantas.UI, callback: callable, use_capture: bool = False):
+    def add_event_listener(self, event_type: fantas.EventType, ui_element: fantas.UI, use_capture: bool, listener: fantas.ListenerFunc):
         """
         为指定事件类型和 UI 元素添加事件监听器。
         Args:
-            event_type (int): 事件类型。
-            ui_element (fantas.UI): 关联的 UI 元素。
-            callback (callable): 事件回调函数，接受一个 fantas.Event 参数，返回 bool。
-            use_capture (bool): 是否在捕获阶段调用回调函数，默认为 False（冒泡阶段）。
+            event_type  (fantas.EventType)   : 事件类型。
+            ui_element  (fantas.UI)          : 关联的 UI 元素。
+            use_capture (bool)               : 是否在捕获阶段调用回调函数。
+            listener    (fantas.ListenerFunc): 要添加的事件监听函数。
         """
-        # 构建监听器键
-        listener_key = (ui_element.ui_id, use_capture)
-        # 获取该事件类型的监听器字典
-        event_listeners = self.listeners.get(event_type, None)
-        # 如果有监听器字典
-        if event_listeners is not None:
-            # 获取注册的回调函数列表
-            callback_list = event_listeners.get(listener_key, None)
-            # 如果没有回调函数列表，创建一个新的列表
-            if callback_list is None:
-                event_listeners[listener_key] = [callback]
-            # 否则，添加回调函数到列表中
-            else:
-                callback_list.append(callback)
-        else:
-            # 如果没有该事件类型的监听器字典，创建一个新的字典并添加回调函数列表
-            self.listeners[event_type] = {listener_key: [callback]}
-    
-    def remove_event_listener(self, event_type: int, ui_element: fantas.UI, callback: callable, use_capture: bool = False):
+        # 获取或创建该监听器键的监听函数列表
+        listener_list = self.listeners.setdefault((event_type, ui_element.ui_id, use_capture), [])
+        # 添加回调函数到列表
+        listener_list.append(listener)
+
+    def remove_event_listener(self, event_type: fantas.EventType, ui_element: fantas.UI, use_capture: bool, listener: fantas.ListenerFunc):
         """
         移除指定事件类型和 UI 元素的事件监听器。
         Args:
-            event_type (int): 事件类型。
-            ui_element (fantas.UI): 关联的 UI 元素。
-            callback (callable): 要移除的事件回调函数。
-            use_capture (bool): 是否在捕获阶段调用回调函数，默认为 False（冒泡阶段）。
+            event_type  (fantas.EventType)   : 事件类型。
+            ui_element  (fantas.UI)          : 关联的 UI 元素。
+            use_capture (bool)               : 是否在捕获阶段调用回调函数。
+            listener    (fantas.ListenerFunc): 要移除的事件监听函数。
+        Raises:
+            ValueError: 如果指定的监听器不存在则引发此异常。
         """
-        # 构建监听器键
-        listener_key = (ui_element.ui_id, use_capture)
-        # 获取该事件类型的监听器字典
-        event_listeners = self.listeners.get(event_type, None)
-        # 如果有监听器字典
-        if event_listeners is not None:
-            # 获取注册的回调函数列表
-            callback_list = event_listeners.get(listener_key, None)
-            # 如果有回调函数列表
-            if callback_list is not None:
-                # 尝试移除回调函数
-                try:
-                    callback_list.remove(callback)
-                except ValueError:
-                    pass
-                # 如果回调函数列表为空，移除监听器键
-                if not callback_list:
-                    event_listeners.pop(listener_key)
-    
-    def set_focus(self, event_category: fantas.EventCategory, ui_element: fantas.UI | None):
-        """
-        设置指定事件类别的焦点 UI 元素。
-        Args:
-            event_category (fantas.EventCategory): 事件类别。
-            ui_element (fantas.UI | None): 要设置为焦点的 UI 元素，或 None 清除焦点。
-        """
-        self.focus[event_category] = ui_element
+        # 获取该监听器键的回调函数列表
+        listener_list = self.listeners.get((event_type, ui_element.ui_id, use_capture), [])
+        # 尝试移除回调函数
+        try:
+            listener_list.remove(listener)
+        except ValueError:
+            raise ValueError("监听器不存在。") from None
+
+def custom_event() -> fantas.EventType:
+    """
+    生成一个自定义事件类型 id。
+    Returns:
+        fantas.EventType: 自定义事件类型 id。
+    """
+    t = fantas.event.custom_type()
+    fantas.event_category_dict[t] = fantas.EventCategory.USER
+    fantas.event.set_allowed(t)
+    return t
+
+def get_event_category(event_type: fantas.EventType) -> fantas.EventCategory:
+    """
+    获取事件分类。
+    Args:
+        event_type (fantas.EventType): 事件类型。
+    Returns:
+        fantas.EventCategory: 事件分类枚举值。
+    """
+    return fantas.event_category_dict.get(event_type, fantas.EventCategory.NONE)

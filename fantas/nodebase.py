@@ -93,3 +93,17 @@ class NodeBase:
     def get_index(self) -> int:
         """ 查询自己在父节点中的位置 """
         return self.father.children.index(self)
+
+    def get_pass_path(self) -> list[NodeBase]:
+        """
+        获取传递路径。
+        传递路径是从自己到根节点的节点列表。
+        Returns:
+            list[NodeBase]: 从自己到根节点的路径列表
+        """
+        path = [self]
+        self = self.father
+        while self is not None:
+            path.append(self)
+            self = self.father
+        return path
