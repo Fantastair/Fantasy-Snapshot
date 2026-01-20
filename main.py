@@ -25,18 +25,21 @@ test_label.append(test_text)
 
 def enter_test_label(event: fantas.Event) -> bool:
     """ 鼠标移入测试标签时的回调函数。 """
-    test_label.set_bgcolor(fantas.Color("#2ecc71"))  # 变更背景色为绿色
+    if event.ui is test_label:
+        test_label.bgcolor = fantas.Color("#2ecc71")    # 变更背景色为绿色
 
 def leave_test_label(event: fantas.Event) -> bool:
     """ 鼠标移出测试标签时的回调函数。 """
-    test_label.set_bgcolor(fantas.Color("#3498db"))  # 恢复背景色为蓝色
+    if event.ui is test_label:
+        test_label.bgcolor = fantas.Color("#3498db")    # 恢复背景色为蓝色
 
 count = 0
 def click_test_label(event: fantas.Event) -> bool:
     """ 鼠标点击测试标签时的回调函数。 """
     global count
-    count += 1
-    print(f"测试标签被点击了{count}次！")
+    if event.ui is test_label:
+        count += 1
+        print(f"测试标签被点击了{count}次！")
 
 window.add_event_listener(fantas.MOUSEENTERED, test_label, False, enter_test_label)    
 window.add_event_listener(fantas.MOUSELEAVED,  test_label, False, leave_test_label)

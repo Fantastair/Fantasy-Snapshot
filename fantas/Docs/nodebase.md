@@ -24,6 +24,12 @@
   存储子节点的列表，顺序为从左到右。
   默认为空列表，表示没有子节点。
 
+- **pass_path_cache**
+  传递路径缓存。
+  `pass_path_cache -> list[Nodebase] | None`
+  用于缓存从自己到根节点的传递路径，以提高查询效率。
+  默认为 None，表示没有缓存。缓存是惰性生成的，会在获取传递路径时自动保存，并在节点结构变化时自动清空，你也可以调用 `build_pass_path_cache()` 方法手动预生成缓存。
+
 ### 方法
 
 节点操作的很多方法和列表非常相似，实际上，你可以把它理解为一个保存子节点的列表，附加一个父节点属性。
@@ -52,12 +58,14 @@
   - node (Nodebase): 要移除的子节点。
 
   如果子节点列表中没有 node，则抛出 `ValueError`。
+  此方法会清空子节点的传递路径缓存。
 
 - **Nodebase.pop()**
   移除并返回指定位置的子节点。
   `pop(index: int) -> Nodebase`
   - index (int): 要移除的子节点的索引。
   如果索引越界，则抛出 `IndexError`。
+  此方法会清空子节点的传递路径缓存。
 
 - **Nodebase.leave()**
   从父节点中脱离。
@@ -68,6 +76,17 @@
   清空子节点。
   `clear()`
   这个方法会比逐个子节点调用 `leave()` 略快。
+  此方法会清空子节点的传递路径缓存。
+
+- **Nodebase.build_pass_path_cache()**
+  预生成传递路径缓存。
+  `build_pass_path_cache()`
+  构建传递路径缓存，包括自己及所有子节点。
+
+- **Nodebase.clear_pass_path_cache()**
+  清空传递路径缓存。
+  `clear_pass_path_cache()`
+  清除传递路径缓存，包括自己及所有子节点。
 
 - **Nodebase.is_root()**
   判断节点是否为根节点。
@@ -85,3 +104,4 @@
   获取从自己到根节点的传递路径。
   `get_pass_path() -> list[Nodebase]`
   返回一个列表，包含从自己到根节点的所有节点。
+  此方法会缓存上一次的结果，以提高查询效率。

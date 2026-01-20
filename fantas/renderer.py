@@ -1,5 +1,5 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from collections import deque
 
 import fantas
@@ -90,8 +90,9 @@ class SurfaceRenderCommand(RenderCommand):
     """
     Surface 渲染命令类，表示将一个 Surface 渲染到目标矩形区域。
     """
-    surface: fantas.Surface       # 要渲染的 Surface 对象
-    dest_rect: fantas.RectLike    # 目标矩形区域，指定渲染的位置
+    creator  : fantas.UI         # 创建此渲染命令的 UI 元素
+    surface  : fantas.Surface    # 要渲染的 Surface 对象
+    dest_rect: fantas.RectLike = field(default_factory=lambda: fantas.DEFAULTRECT)    # 目标矩形区域，指定渲染的位置
 
     def render(self, target_surface: fantas.Surface):
         """
@@ -116,8 +117,9 @@ class ColorFillCommand(RenderCommand):
     """
     颜色填充命令类，表示在目标矩形区域内填充指定颜色。
     """
-    color: fantas.ColorLike                     # 填充颜色
-    dest_rect: fantas.RectLike | None = None    # 目标矩形区域，指定填充的位置和大小
+    creator  : fantas.UI                     # 创建此渲染命令的 UI 元素
+    color    : fantas.ColorLike = 'black'    # 填充颜色
+    dest_rect: fantas.RectLike  = None       # 目标矩形区域，指定填充的位置和大小
 
     def render(self, target_surface: fantas.Surface):
         """
@@ -135,8 +137,6 @@ class ColorFillCommand(RenderCommand):
         Returns:
             bool: 如果点在区域内则返回 True，否则返回 False。
         """
-        if self.dest_rect is None:
-            return True
         return self.dest_rect.collidepoint(point)
 
 @dataclass(slots=True)
@@ -144,11 +144,13 @@ class ColorTextLineRenderCommand(RenderCommand):
     """
     文字渲染命令类，表示将文本渲染到目标矩形区域。
     """
-    text: str                           # 要渲染的文本内容
-    font: fantas.Font                   # 字体对象
-    size: float                         # 字体大小
-    fgcolor: fantas.ColorLike | None    # 文字颜色
-    dest_rect: fantas.RectLike          # 目标矩形区域，指定文本的渲染位置和大小
+    creator  : fantas.UI                                       # 创建此渲染命令的 UI 元素
+    text     : str                     = 'text'                # 文本内容
+    font     : fantas.Font             = fantas.DEFAULTFONT    # 字体对象
+    size     : float                   = 16.0                  # 字体大小
+    fgcolor  : fantas.ColorLike | None = 'black'               # 文字颜色
+    origin   : fantas.Point            = (0, 0)                # 渲染原点
+    affected_rect: fantas.RectLike     = field(init=False)     # 受影响的矩形区域
 
     def render(self, target_surface: fantas.Surface):
         """
@@ -156,7 +158,7 @@ class ColorTextLineRenderCommand(RenderCommand):
         Args:
             target_surface (fantas.Surface): 目标 Surface 对象，渲染结果将绘制到该对象上。
         """
-        self.dest_rect = self.font.render_to(target_surface, self.dest_rect, self.text, self.fgcolor, size=self.size)
+        self.affected_rect = self.font.render_to(target_surface, self.origin, self.text, self.fgcolor, size=self.size)
     
     def hit_test(self, point: fantas.IntPoint) -> bool:
         """
@@ -166,4 +168,4 @@ class ColorTextLineRenderCommand(RenderCommand):
         Returns:
             bool: 如果点在区域内则返回 True，否则返回 False。
         """
-        return self.dest_rect.collidepoint(point)
+        return self.affected_rect.collidepoint(point)

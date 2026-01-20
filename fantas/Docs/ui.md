@@ -32,6 +32,12 @@
 
 纯色背景 UI 类。
 
+``` python
+ColorBackground(
+    bgcolor : fantas.ColorLike = 'black'
+) -> fantas.ColorBackground
+```
+
 ### 属性
 
 - **father (UI | None)**: 指向父显示元素。
@@ -40,24 +46,16 @@
 - **bgcolor (fantas.ColorLike)**: 背景颜色。
 - **color_fill_command (fantas.ColorFillCommand)**: 用于填充背景颜色的渲染命令。
 
-初始化 `ColorBackground` 时，你应该只提供 `bgcolor` 参数。
-
-### 方法
-
-- **ColorBackground.set_bgcolor()**:
-  设置背景颜色。
-  `set_bgcolor(color: fantas.ColorLike)`
-  该方法会更新 `bgcolor` 属性和 `color_fill_command` 属性。
-
-- **ColorBackground.create_render_commands()**:
-  创建渲染命令列表（包括子元素的）。
-  `create_render_commands(offset: fantas.Point = (0, 0)`
-  返回一个生成器。
-  该方法会生成一个填充矩形的渲染命令，然后递归调用子元素的 `create_render_commands` 方法，并将偏移量传递给子元素。
-
 ## fantas.ColorLabel
 
 纯色矩形 UI 类。
+
+``` python
+ColorLabel(
+    bgcolor : fantas.ColorLike = 'black'
+    rect    : fantas.RectLike  = fantas.Rect(0, 0, 100, 50)
+) -> fantas.ColorLabel
+```
 
 ### 属性
 
@@ -68,25 +66,19 @@
 - **rect (fantas.RectLike)**: 矩形区域。
 - **color_fill_command (fantas.ColorFillCommand)**: 用于填充矩形颜色的渲染命令。
 
-### 方法
-
-- **ColorLabel.set_bgcolor()**:
-  设置矩形颜色。
-  `set_bgcolor(color: fantas.ColorLike)`
-  该方法会更新 `bgcolor` 属性和 `color_fill_command` 属性。
-- **ColorLabel.set_rect()**:
-  设置矩形区域。
-  `set_rect(rect: fantas.RectLike)`
-  该方法会更新 `rect` 属性。
-- **ColorLabel.create_render_commands()**:
-  创建渲染命令列表（包括子元素的）。
-  `create_render_commands(offset: fantas.Point = (0, 0)`
-  返回一个生成器。
-  该方法会生成一个填充矩形的渲染命令，然后递归调用子元素的 `create_render_commands` 方法，并将偏移量传递给子元素。
-
 ## fantas.ColorTextLine
 
 纯色单行文本 UI 类。
+
+``` python
+ColorTextLine(
+    text    : str                = 'text'
+    font    : fantas.Font        = fantas.DEFAULTFONT
+    fgcolor : fantas.ColorLike   = 'black'
+    size    : float              = 16.0
+    rect    : fantas.RectLike    = fantas.DEFAULTRECT)
+) -> fantas.ColorTextLine
+```
 
 ### 属性
 
@@ -99,31 +91,3 @@
 - **size (float)**: 字体大小。
 - **rect (fantas.RectLike)**: 定位矩形。
 - **color_text_line_render_command (fantas.ColorTextLineRenderCommand)**: 用于绘制文本的渲染命令。
-
-### 方法
-
-- **ColorTextLine.set_text()**:
-  设置显示的文本内容。
-  `set_text(text: str)`
-  该方法会更新 `text` 属性和 `color_text_line_render_command` 属性。
-- **ColorTextLine.set_font()**:
-  设置字体。
-  `set_font(font: fantas.Font)`
-  该方法会更新 `font` 属性和 `color_text_line_render_command` 属性。
-- **ColorTextLine.set_fgcolor()**:
-  设置文本颜色。
-  `set_fgcolor(color: fantas.ColorLike)`
-  该方法会更新 `fgcolor` 属性和 `color_text_line_render_command` 属性。
-- **ColorTextLine.set_size()**:
-  设置字体大小。
-  `set_size(size: float)`
-  该方法会更新 `size` 属性和 `color_text_line_render_command` 属性。
-- **ColorTextLine.set_rect()**:
-  设置定位矩形。
-  `set_rect(rect: fantas.RectLike)`
-  该方法会更新 `rect` 属性。
-- **ColorTextLine.create_render_commands()**:
-  创建渲染命令列表（包括子元素的）。
-  `create_render_commands(offset: fantas.Point = (0, 0)`
-  返回一个生成器。
-  该方法会生成一个绘制文本的渲染命令，然后递归调用子元素的 `create_render_commands` 方法，并将偏移量传递给子元素。

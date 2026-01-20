@@ -10,9 +10,9 @@ __all__ = (
 @dataclass(slots=True)
 class UI(fantas.NodeBase):
     """ 显示元素基类。 """
-    father  : UI | None   = None                                                # 指向父显示元素
-    children: list[UI]    = field(default_factory=list)                         # 子显示元素列表
-    ui_id   : fantas.UIID = field(default_factory=fantas.generate_unique_id)    # 唯一标识 ID
+    father  : UI | None   = field(default=None, init=False, repr=False)                     # 指向父显示元素
+    children: list[UI]    = field(default_factory=list, init=False, repr=False)             # 子显示元素列表
+    ui_id   : fantas.UIID = field(default_factory=fantas.generate_unique_id, init=False)    # 唯一标识 ID
 
     def create_render_commands(self, offset: fantas.Point = (0, 0)):
         """
@@ -24,4 +24,3 @@ class UI(fantas.NodeBase):
         """
         for child in self.children:
             yield from child.create_render_commands(offset)
-    

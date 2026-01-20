@@ -72,10 +72,10 @@ class DebugWindow(fantas.Window):
             for i in range(self.total_lines - 1):
                 line_ui: fantas.ColorTextLine = self.background.children[i]
                 next_line_ui: fantas.ColorTextLine = self.background.children[i + 1]
-                line_ui.set_text(next_line_ui.text)
-            self.background.children[self.total_lines - 1].set_text(cmd)
+                line_ui.text = next_line_ui.text
+            self.background.children[self.total_lines - 1].text = cmd
         else:
-            self.background.children[self.text_index].set_text(cmd)
+            self.background.children[self.text_index].text = cmd
             self.text_index += 1
 
 debugwindow_config = fantas.WindowConfig()

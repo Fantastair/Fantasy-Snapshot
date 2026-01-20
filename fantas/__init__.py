@@ -46,6 +46,8 @@ def generate_unique_id() -> int:
     """
     return next(id_counter)
 
+# 高精度时间获取函数
+from time import perf_counter_ns as get_time_ns
 
 # 初始化 Pygame
 import pygame

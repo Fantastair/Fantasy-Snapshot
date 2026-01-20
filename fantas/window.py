@@ -80,6 +80,8 @@ class Window(PygameWindow):
         """
         # 清空事件队列
         fantas.event.clear()
+        # 预生成传递路径缓存
+        self.root_ui.build_pass_path_cache()
         # 主循环
         while self.running:
             # 限制帧率
@@ -104,7 +106,11 @@ class Window(PygameWindow):
         if not fantas.Debug.is_debug_window_open():
             raise RuntimeError("调试窗口未打开，无法进入调试主循环。")
         # === 调试 ===
+        # 清空事件队列
         fantas.event.clear()
+        # 预生成传递路径缓存
+        self.root_ui.build_pass_path_cache()
+        # 主循环
         while self.running:
             # 限制帧率
             self.clock.tick(self.fps)
@@ -128,6 +134,7 @@ class Window(PygameWindow):
             self.renderer.render(self.screen)
             # 更新窗口显示
             self.flip()
+        # 退出主循环后销毁窗口
         self.destroy()
     
     def handle_debug_output(self, output: str):
