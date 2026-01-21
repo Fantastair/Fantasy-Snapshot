@@ -103,6 +103,20 @@ ColorFillCommand(
 - **color (fantas.ColorLike)**: 用于填充的颜色。
 - **dest_rect (fantas.RectLike)**: 目标矩形区域，指定填充的位置和大小，如果设为 None，则会填满整个目标 Surface（这通常用于覆盖内容，比如纯色背景）。
 
+## fantas.ColorBackGrundFillCommand
+
+纯色背景填充命令，填充整个目标 Surface。
+
+``` python
+ColorBackGrundFillCommand(
+    creator  : fantas.UI,
+    color    : fantas.ColorLike = 'black',
+) -> ColorBackGrundFillCommand
+```
+
+- **creator (fantas.UI)**: 创建此渲染命令的 UI 元素。
+- **color (fantas.ColorLike)**: 用于填充的颜色。
+
 ## fantas.ColorTextLineRenderCommand
 
 纯色单行文本绘制命令。
@@ -124,3 +138,25 @@ ColorTextLineRenderCommand(
 - **size (float)**: 字体大小
 - **fgcolor (fantas.ColorLike | None)**: 文字颜色
 - **origin (fantas.Point)**: 渲染原点
+
+## fantas.QuarterCircleRenderCommand
+
+四分之一圆绘制命令。
+
+``` python
+QuarterCircleRenderCommand(
+    creator     : fantas.UI
+    color       : fantas.ColorLike = 'black'
+    center      : fantas.Point     = (0, 0)
+    radius      : float            = 8
+    width       : int              = 0
+    quarter     : int              = fantas.Quadrant.TOPRIGHT
+) -> QuarterCircleRenderCommand
+```
+
+- **creator (fantas.UI)**: 创建此渲染命令的 UI 元素
+- **color (fantas.ColorLike)**: 填充颜色
+- **center (fantas.Point)**: 圆心坐标
+- **radius (float)**: 半径
+- **width (int)**: 线宽，0 表示填充
+- **quarter (int)**: 象限

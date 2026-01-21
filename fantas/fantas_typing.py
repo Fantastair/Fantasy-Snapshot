@@ -2,14 +2,18 @@ from typing import TypeAlias, Callable
 import pygame
 
 __all__ = (
+    "Surface",
+    "Font",
     "RectLike", "Rect",
     "ColorLike", "Color",
     "Point", "IntPoint",
     "Event", "EventType",
     "UIID", "ListenerKey", "ListenerFunc",
-    "Surface",
-    "Font",
+    "QuadrantMask",
 )
+
+from pygame import Surface          # 表面类
+from pygame.freetype import Font    # 字体类
 
 RectLike:  TypeAlias = pygame.typing.RectLike     # 矩形类型
 from pygame import FRect as Rect                  # 矩形类
@@ -27,5 +31,4 @@ UIID: TypeAlias = int    # UI 元素唯一标识类型
 ListenerKey : TypeAlias = tuple[EventType, UIID, bool]    # 监听器键类型
 ListenerFunc: TypeAlias = Callable[[Event], bool]         # 监听器函数类型
 
-from pygame import Surface          # 表面类
-from pygame.freetype import Font    # 字体类
+QuadrantMask: TypeAlias = int    # 象限掩码类型，是 fantas.Quadrant 通过或运算得到的值

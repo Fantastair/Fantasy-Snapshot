@@ -59,6 +59,7 @@ pygame.freetype.init()
 import pygame.time  as time
 import pygame.event as event
 import pygame.mouse as mouse
+import pygame.draw  as draw
 
 # 导入 fantas 包的各个子模块
 from fantas.constants     import *    # 常量定义

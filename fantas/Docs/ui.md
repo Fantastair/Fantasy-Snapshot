@@ -44,7 +44,7 @@ ColorBackground(
 - **children (List[UI\])**: 子显示元素列表。
 - **ui_id (fantas.UIID)**: 唯一标识 ID。
 - **bgcolor (fantas.ColorLike)**: 背景颜色。
-- **color_fill_command (fantas.ColorFillCommand)**: 用于填充背景颜色的渲染命令。
+- **command (fantas.ColorBackgroundFillCommand)**: 用于填充背景颜色的渲染命令。
 
 ## fantas.ColorLabel
 
@@ -52,8 +52,13 @@ ColorBackground(
 
 ``` python
 ColorLabel(
-    bgcolor : fantas.ColorLike = 'black'
-    rect    : fantas.RectLike  = fantas.Rect(0, 0, 100, 50)
+    bgcolor: fantas.ColorLike | None   = 'black'
+    fgcolor: fantas.ColorLike          = 'white'
+    rect   : fantas.RectLike           = fantas.Rect(0, 0, 100, 50)
+    border_radius: int | float         = 0.0
+    border_width : int | float         = 0.0
+    quadrant     : fantas.QuadrantMask = 0b111111
+    box_mode     : fantas.BoxMode      = fantas.BoxMode.INSIDE
 ) -> fantas.ColorLabel
 ```
 
@@ -63,8 +68,13 @@ ColorLabel(
 - **children (List[UI\])**: 子显示元素列表。
 - **ui_id (fantas.UIID)**: 唯一标识 ID。
 - **bgcolor (fantas.ColorLike)**: 矩形颜色。
+- **fgcolor (fantas.ColorLike)**: 边框颜色。
 - **rect (fantas.RectLike)**: 矩形区域。
-- **color_fill_command (fantas.ColorFillCommand)**: 用于填充矩形颜色的渲染命令。
+- **border_radius (int | float)**: 边框圆角半径。
+- **border_width (int | float)**: 边框宽度。
+- **quadrant (fantas.QuadrantMask)**: 指定哪些角是圆角。
+- **box_mode (fantas.BoxMode)**: 边框绘制模式。
+- **render_commands (ColorLabelRenderCommands)**: 渲染命令容器。
 
 ## fantas.ColorTextLine
 

@@ -50,3 +50,8 @@
 - **fantas.ListenerFunc**
   监听器函数类型。
   一个可调用对象，接受一个 `pygame.event.Event` 对象作为参数，并返回一个布尔值。
+
+- **fantas.QuadrantMask**
+  象限掩码类型。
+  `e.g. fantas.Quadrant.TOPLEFT | fantas.Quadrant.BOTTOMRIGHT`
+  是 fantas.Quadrant 通过或运算得到的值，用于表示多个象限的组合。

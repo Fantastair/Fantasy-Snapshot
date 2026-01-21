@@ -12,8 +12,17 @@ background = fantas.ColorBackground(bgcolor=fantas.Color("#e3e3e3"))
 window.append(background)
 
 # 创建测试标签
-test_label = fantas.ColorLabel(bgcolor=fantas.Color("#3498db"), rect=fantas.Rect(0, 0, 960, 540))
+test_label = fantas.ColorLabel(
+    bgcolor=fantas.Color("#3498db"),
+    fgcolor=fantas.Color("#303030"),
+    rect=fantas.Rect(100, 100, 400, 200),
+    border_radius=40,
+    border_width=8,
+    box_mode=fantas.BoxMode.OUTSIDE,
+    quadrant=fantas.Quadrant.TOPLEFT | fantas.Quadrant.BOTTOMRIGHT,
+)
 background.append(test_label)
+test_label.rect.center = (window.size[0] // 2, window.size[1] // 2)
 
 # 创建测试文字行
 test_text = fantas.ColorTextLine(
@@ -25,12 +34,12 @@ test_label.append(test_text)
 
 def enter_test_label(event: fantas.Event) -> bool:
     """ 鼠标移入测试标签时的回调函数。 """
-    if event.ui is test_label:
-        test_label.bgcolor = fantas.Color("#2ecc71")    # 变更背景色为绿色
+    if event.ui is test_label and test_label.bgcolor is not None:
+        test_label.bgcolor = None    
 
 def leave_test_label(event: fantas.Event) -> bool:
     """ 鼠标移出测试标签时的回调函数。 """
-    if event.ui is test_label:
+    if event.ui is test_label and test_label.bgcolor is None:
         test_label.bgcolor = fantas.Color("#3498db")    # 恢复背景色为蓝色
 
 count = 0

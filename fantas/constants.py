@@ -1,5 +1,5 @@
 from __future__ import annotations
-from enum import Enum, auto
+from enum import Enum, IntEnum, auto
 
 import pygame
 import pygame.freetype
@@ -10,14 +10,17 @@ import fantas
 __all__ = [
     "DEFAULTRECT",
     "DEFAULTFONT",
-    "EventCategory",
-    "event_category_dict",
 
-    "custom_event",
-    "get_event_category",
+    "Quadrant",
+    "BoxMode",
 
     "WINDOWPOS_UNDEFINED",
     "WINDOWPOS_CENTERED",
+
+    "EventCategory",
+    "event_category_dict",
+    "custom_event",
+    "get_event_category",
 
     "MOUSEBUTTONDOWN",
     "MOUSEBUTTONUP",
@@ -49,6 +52,22 @@ DEFAULTRECT = pygame.Rect(0, 0, 0, 0)       # 默认矩形
 DEFAULTFONT = pygame.freetype.Font(None)    # 默认字体
 DEFAULTFONT.origin = True
 
+class Quadrant(IntEnum):
+    """
+    象限枚举。
+    低 2 位用于快速符号计算，高 4 位作为单比特掩码。
+    """
+    TOPRIGHT    = 0b000101    # 第一象限
+    TOPLEFT     = 0b001000    # 第二象限
+    BOTTOMLEFT  = 0b010010    # 第三象限
+    BOTTOMRIGHT = 0b100011    # 第四象限
+
+class BoxMode(Enum):
+    """ 盒子模式枚举，用来控制边框的扩展方向。 """
+    INSIDE     = auto()    # 内部盒子，表示边框只会向内部扩展
+    OUTSIDE    = auto()    # 外部盒子，表示边框只会向外部扩展
+    INOUTSIDE  = auto()    # 中间盒子，表示边框会向内部和外部同时扩展
+
 class EventCategory(Enum):
     """ 事件分类枚举。 """
     MOUSE    = auto()    # 鼠标事件
@@ -57,6 +76,7 @@ class EventCategory(Enum):
     WINDOW   = auto()    # 窗口事件
     USER     = auto()    # 用户自定义事件
     NONE     = auto()    # 未分类事件
+
 # 事件分类表
 event_category_dict: dict[fantas.EventType, EventCategory] = {
     MOUSEBUTTONDOWN: EventCategory.MOUSE,
@@ -87,6 +107,7 @@ event_category_dict: dict[fantas.EventType, EventCategory] = {
 def custom_event(event_category: EventCategory = EventCategory.USER) -> fantas.EventType:
     """
     生成一个自定义事件类型 id。
+    注意，fantas 默认禁用不需要的事件，创建自定义事件后需要手动启用该事件类型才能接收此事件。
     Args:
         event_category (fantas.EventCategory): 事件分类，默认为 USER。
     Returns:
@@ -94,7 +115,6 @@ def custom_event(event_category: EventCategory = EventCategory.USER) -> fantas.E
     """
     t = fantas.event.custom_type()
     event_category_dict[t] = event_category
-    fantas.event.set_allowed(t)
     return t
 
 def get_event_category(event_type: fantas.EventType) -> EventCategory:

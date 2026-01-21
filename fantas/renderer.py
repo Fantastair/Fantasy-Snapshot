@@ -9,7 +9,9 @@ __all__ = (
     "RenderCommand",
     "SurfaceRenderCommand",
     "ColorFillCommand",
+    "ColorBackgroundFillCommand",
     "ColorTextLineRenderCommand",
+    "QuarterCircleRenderCommand",
 )
 
 class Renderer:
@@ -34,7 +36,7 @@ class Renderer:
         """
         执行渲染队列中的所有渲染命令。
         Args:
-            target_surface (fantas.Surface): 目标 Surface 对象，渲染结果将绘制到该对象上。
+            target_surface (fantas.Surface): 目标 Surface 对象。
         """
         for command in self.queue:
             command.render(target_surface)
@@ -63,7 +65,7 @@ class Renderer:
 @dataclass(slots=True)
 class RenderCommand:
     """
-    渲染命令基类，所有具体渲染命令类应继承自此类并实现 render 方法。
+    渲染命令基类。
     """
     creator: fantas.UI    # 创建此渲染命令的 UI 元素
 
@@ -71,7 +73,7 @@ class RenderCommand:
         """
         执行渲染操作，将渲染结果绘制到目标 Surface 上。
         Args:
-            target_surface (fantas.Surface): 目标 Surface 对象，渲染结果将绘制到该对象上。
+            target_surface (fantas.Surface): 目标 Surface 对象。
         """
         raise NotImplementedError("子类未实现 render 方法。")
     
@@ -88,23 +90,23 @@ class RenderCommand:
 @dataclass(slots=True)
 class SurfaceRenderCommand(RenderCommand):
     """
-    Surface 渲染命令类，表示将一个 Surface 渲染到目标矩形区域。
+    Surface 渲染命令类。
     """
     creator  : fantas.UI         # 创建此渲染命令的 UI 元素
     surface  : fantas.Surface    # 要渲染的 Surface 对象
-    dest_rect: fantas.RectLike = field(default_factory=lambda: fantas.DEFAULTRECT)    # 目标矩形区域，指定渲染的位置
+    dest_rect: fantas.RectLike = field(default_factory=fantas.DEFAULTRECT.copy)    # 目标矩形区域，指定渲染的位置
 
     def render(self, target_surface: fantas.Surface):
         """
-        执行渲染操作，将 Surface 渲染到目标 Surface 上的指定矩形区域。
+        执行渲染操作。
         Args:
-            target_surface (fantas.Surface): 目标 Surface 对象，渲染结果将绘制到该对象上。
+            target_surface (fantas.Surface): 目标 Surface 对象。
         """
         self.dest_rect = target_surface.blit(self.surface, self.dest_rect)
     
     def hit_test(self, point: fantas.IntPoint) -> bool:
         """
-        命中测试，判断给定的坐标点是否在此渲染命令的区域内。
+        命中测试。
         Args:
             point (fantas.IntPoint): 坐标点（x, y）。
         Returns:
@@ -115,23 +117,23 @@ class SurfaceRenderCommand(RenderCommand):
 @dataclass(slots=True)
 class ColorFillCommand(RenderCommand):
     """
-    颜色填充命令类，表示在目标矩形区域内填充指定颜色。
+    颜色填充命令类。
     """
     creator  : fantas.UI                     # 创建此渲染命令的 UI 元素
     color    : fantas.ColorLike = 'black'    # 填充颜色
-    dest_rect: fantas.RectLike  = None       # 目标矩形区域，指定填充的位置和大小
+    dest_rect: fantas.RectLike  = field(default_factory=fantas.DEFAULTRECT.copy)    # 目标矩形区域，指定填充的位置和大小
 
     def render(self, target_surface: fantas.Surface):
         """
-        执行填充操作，在目标 Surface 上的指定矩形区域内填充颜色。
+        执行填充操作。
         Args:
-            target_surface (fantas.Surface): 目标 Surface 对象，填充结果将绘制到该对象上。
+            target_surface (fantas.Surface): 目标 Surface 对象。
         """
-        self.dest_rect = target_surface.fill(self.color, self.dest_rect)
-    
+        target_surface.fill(self.color, self.dest_rect)
+
     def hit_test(self, point: fantas.IntPoint) -> bool:
         """
-        命中测试，判断给定的坐标点是否在此填充命令的区域内。
+        命中测试。
         Args:
             point (fantas.IntPoint): 坐标点（x, y）。
         Returns:
@@ -139,10 +141,35 @@ class ColorFillCommand(RenderCommand):
         """
         return self.dest_rect.collidepoint(point)
 
+class ColorBackgroundFillCommand(RenderCommand):
+    """
+    颜色背景填充命令类。
+    """
+    creator  : fantas.UI                     # 创建此渲染命令的 UI 元素
+    color    : fantas.ColorLike = 'black'    # 填充颜色
+
+    def render(self, target_surface: fantas.Surface):
+        """
+        执行填充操作。
+        Args:
+            target_surface (fantas.Surface): 目标 Surface 对象。
+        """
+        target_surface.fill(self.color)
+
+    def hit_test(self, point: fantas.IntPoint) -> bool:
+        """
+        命中测试。
+        Args:
+            point (fantas.IntPoint): 坐标点（x, y）。
+        Returns:
+            bool: 如果点在区域内则返回 True，否则返回 False。
+        """
+        return True
+
 @dataclass(slots=True)
 class ColorTextLineRenderCommand(RenderCommand):
     """
-    文字渲染命令类，表示将文本渲染到目标矩形区域。
+    文字渲染命令类。
     """
     creator  : fantas.UI                                       # 创建此渲染命令的 UI 元素
     text     : str                     = 'text'                # 文本内容
@@ -154,18 +181,64 @@ class ColorTextLineRenderCommand(RenderCommand):
 
     def render(self, target_surface: fantas.Surface):
         """
-        执行文本渲染操作，将文本渲染到目标 Surface 上的指定矩形区域。
+        执行文本渲染操作。
         Args:
-            target_surface (fantas.Surface): 目标 Surface 对象，渲染结果将绘制到该对象上。
+            target_surface (fantas.Surface): 目标 Surface 对象。
         """
         self.affected_rect = self.font.render_to(target_surface, self.origin, self.text, self.fgcolor, size=self.size)
     
     def hit_test(self, point: fantas.IntPoint) -> bool:
         """
-        命中测试，判断给定的坐标点是否在此文本渲染命令的区域内。
+        命中测试。
         Args:
             point (fantas.IntPoint): 坐标点（x, y）。
         Returns:
             bool: 如果点在区域内则返回 True，否则返回 False。
         """
         return self.affected_rect.collidepoint(point)
+
+# 象限映射表
+quadrant_map = {
+    fantas.Quadrant.TOPRIGHT   : {'draw_top_right': True},
+    fantas.Quadrant.TOPLEFT    : {'draw_top_left' : True},
+    fantas.Quadrant.BOTTOMLEFT : {'draw_bottom_left': True},
+    fantas.Quadrant.BOTTOMRIGHT: {'draw_bottom_right': True},
+}
+
+@dataclass(slots=True)
+class QuarterCircleRenderCommand(RenderCommand):
+    """
+    四分之一圆渲染命令类。
+    """
+    creator  : fantas.UI                     # 创建此渲染命令的 UI 元素
+    color    : fantas.ColorLike = 'black'    # 圆的颜色
+    center   : fantas.Point     = (0, 0)     # 圆心位置
+    radius   : int | float      = 8          # 圆的半径，≥ 1
+    width    : int | float      = 0          # 圆边框宽度，≥ 0，0 表示填充
+    quadrant : fantas.Quadrant  = fantas.Quadrant.TOPRIGHT    # 象限
+
+    def render(self, target_surface: fantas.Surface):
+        """
+        执行四分之一圆渲染操作。
+        Args:
+            target_surface (fantas.Surface): 目标 Surface 对象。
+        """
+        fantas.draw.aacircle(target_surface, self.color, self.center, self.radius, width=self.width, **quadrant_map[self.quadrant])
+    
+    def hit_test(self, point: fantas.Point) -> bool:
+        """
+        命中测试。
+        Args:
+            point (fantas.IntPoint): 坐标点（x, y）。
+        Returns:
+            bool: 如果点在区域内则返回 True，否则返回 False。
+        """
+        # 计算相对坐标
+        cx, cy = self.center
+        dx = point[0] - cx
+        dy = point[1] - cy
+        # 符号测试
+        if (self.quadrant & 0b11) ^ ((dx >= 0) | ((dy >= 0) << 1)):
+            return False
+        # 距离测试
+        return self.radius * self.radius >= dx * dx + dy * dy >= self.width * self.width
