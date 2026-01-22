@@ -51,9 +51,9 @@ from time import perf_counter_ns as get_time_ns
 
 # 初始化 Pygame
 import pygame
-import pygame.freetype
+import pygame.freetype as freetype
 pygame.init()
-pygame.freetype.init()
+freetype.init()
 
 # 导入 Pygame 的子模块以简化调用链
 import pygame.time  as time

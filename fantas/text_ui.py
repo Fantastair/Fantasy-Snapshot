@@ -32,15 +32,19 @@ class ColorTextLine(fantas.UI):
         Yields:
             RenderCommand: 渲染命令对象。
         """
+        # 简化引用
+        rc = self.color_text_line_render_command
+        left, top = self.rect.topleft
+        font = self.font
         # 设置文本内容
-        self.color_text_line_render_command.text = self.text
+        rc.text = self.text
         # 设置字体
-        self.color_text_line_render_command.font = self.font
+        rc.font = font
         # 设置字体大小
-        self.color_text_line_render_command.size = self.size
+        rc.size = self.size
         # 设置文本颜色
-        self.color_text_line_render_command.fgcolor = self.fgcolor
+        rc.fgcolor = self.fgcolor
         # 设置文本原点
-        self.color_text_line_render_command.origin = (self.rect.left + offset[0], self.rect.top + offset[1] + self.font.get_sized_ascender(self.size))
+        rc.origin = (left + offset[0], top + offset[1] + font.get_sized_ascender(self.size))
         # 生成渲染命令
-        yield self.color_text_line_render_command
+        yield rc

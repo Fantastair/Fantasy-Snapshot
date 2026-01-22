@@ -34,12 +34,12 @@ test_label.append(test_text)
 
 def enter_test_label(event: fantas.Event) -> bool:
     """ 鼠标移入测试标签时的回调函数。 """
-    if event.ui is test_label and test_label.bgcolor is not None:
-        test_label.bgcolor = None    
+    if event.ui is test_label:
+        test_label.bgcolor = fantas.Color("#29b952")    # 设置背景色为绿色
 
 def leave_test_label(event: fantas.Event) -> bool:
     """ 鼠标移出测试标签时的回调函数。 """
-    if event.ui is test_label and test_label.bgcolor is None:
+    if event.ui is test_label:
         test_label.bgcolor = fantas.Color("#3498db")    # 恢复背景色为蓝色
 
 count = 0
@@ -55,8 +55,8 @@ window.add_event_listener(fantas.MOUSELEAVED,  test_label, False, leave_test_lab
 window.add_event_listener(fantas.MOUSECLICKED, test_label, False, click_test_label)
 
 # 运行主循环
-# window.mainloop()
+window.mainloop()
 
 # 调试模式
-fantas.Debug.open_debug_window(0, 0, 2560, (1600 - window.size[1]) // 2 - 50)
-window.mainloop_debug()
+# fantas.Debug.open_debug_window(window, 0, 0, 2557, (1600 - window.size[1]) // 2 - 50)
+# window.mainloop_debug()

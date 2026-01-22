@@ -97,7 +97,7 @@ class EventHandler:
         # 查找最近公共祖先节点索引
         lca_index = 0    # 最近公共祖先节点索引
         for i, (last_ui, this_ui) in enumerate(zip(reversed(self.last_hover_pass_path), reversed(this_hover_pass_path))):
-            if last_ui == this_ui:
+            if last_ui is this_ui:
                 lca_index = i
             else:
                 break

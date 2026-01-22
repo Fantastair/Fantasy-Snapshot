@@ -85,6 +85,8 @@ class ColorLabel(fantas.UI):
             rect.inflate_ip(self.border_width * 2, self.border_width * 2)
         elif self.box_mode == fantas.BoxMode.INOUTSIDE:
             rect.inflate_ip(self.border_width, self.border_width)
+        # 限制圆角半径
+        border_radius = self.border_radius
         self.border_radius = min(self.border_radius, rect.width / 2, rect.height / 2)
         # 计算渲染样式键
         render_style_key = ((self.bgcolor is not None) << 2) | ((self.border_width >= 1) << 1) | (self.border_radius >= 1)
@@ -93,6 +95,8 @@ class ColorLabel(fantas.UI):
             yield from crc_bwr_map[render_style_key](self, rect)
         # 生成子元素的渲染命令
         yield from fantas.UI.create_render_commands(self, offset)
+        # 恢复圆角半径
+        self.border_radius = border_radius
 
     def crc_bwr_010(self, rect: fantas.RectLike):
         """

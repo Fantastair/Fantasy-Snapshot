@@ -14,10 +14,11 @@ class Debug:
     queue: Queue = Queue()                     # 调试子进程返回队列
 
     @staticmethod
-    def open_debug_window(left: int = 0, top: int = 0, width: int = 1280, height: int = 720, close_with_main: bool = True):
+    def open_debug_window(window: fantas.Window, left: int = 0, top: int = 0, width: int = 1280, height: int = 720, close_with_main: bool = True):
         """
         启动调试窗口子进程。
         Args:
+            window (fantas.Window): 主窗口对象。
             left            (int) : 窗口左上角的 X 坐标位置。
             top             (int) : 窗口左上角的 Y 坐标位置。
             width           (int) : 窗口宽度（像素）。
@@ -39,7 +40,7 @@ class Debug:
         ])
         # 使用同一个 Python 解释器，构建命令行参数
         import sys
-        cmd = [sys.executable, str(fantas.package_path() / "debug_window.py"), str(left), str(top), str(width), str(height)]
+        cmd = [sys.executable, str(fantas.package_path() / "debug_window.py"), window.title, str(left), str(top), str(width), str(height)]
 
         try:
             Debug.process = subprocess.Popen(
@@ -58,24 +59,26 @@ class Debug:
     @staticmethod
     def close_debug_window():
         """ 关闭调试窗口子进程。 """
-        if Debug.process is not None and Debug.process.stdin is not None:
+        if Debug.is_debug_window_open() and Debug.process.stdin is not None:
             Debug.process.stdin.close()
-        if Debug.process is not None and Debug.process.poll() is None:
+        if Debug.is_debug_window_open():
             Debug.process.kill()
             Debug.process.wait()
 
     @staticmethod
-    def send_debug_command(msg: str):
+    def send_debug_command(msg: str, prompt: str = "Debug"):
         """
         发送调试命令到调试窗口子进程。
         Args:
             msg (str): 要发送的调试命令字符串。
+            prompt (str): 调试命令的提示符。
         Raises:
             RuntimeError: 如果调试窗口未启动则抛出此异常。
         """
-        if Debug.process is None or Debug.process.stdin is None:
-            raise RuntimeError("调试窗口未启动，无法发送调试命令。")
-        Debug.process.stdin.write(msg + "\n")
+        if not Debug.is_debug_window_open() or Debug.process.stdin is None:
+            # raise RuntimeError("调试窗口未启动，无法发送调试命令。")
+            return
+        Debug.process.stdin.write(f"[{prompt}] {msg}\n")
         Debug.process.stdin.flush()
     
     @staticmethod

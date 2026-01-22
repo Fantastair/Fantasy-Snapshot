@@ -110,33 +110,62 @@ class Window(PygameWindow):
         fantas.event.clear()
         # 预生成传递路径缓存
         self.root_ui.build_pass_path_cache()
+        # === 调试 ===
+        # 监听调试输出事件
+        READDEBUGOUTPUT = fantas.custom_event()
+        fantas.event.set_allowed(READDEBUGOUTPUT)
+        self.add_event_listener(READDEBUGOUTPUT, self.root_ui, True, self.read_debug_output)
+        fantas.time.set_timer(fantas.Event(READDEBUGOUTPUT), 100)
+        time_list: list[int] = []
+        # === 调试 ===
         # 主循环
         while self.running:
+            # === 调试 ===
+            time_list.append(fantas.get_time_ns())
+            # === 调试 ===
             # 限制帧率
             self.clock.tick(self.fps)
+            # === 调试 ===
+            time_list.append(fantas.get_time_ns())
+            # === 调试 ===
             # 处理事件
             for event in fantas.event.get():
                 # === 调试 ===
                 # 发送事件信息到调试窗口
-                if fantas.Debug.is_debug_window_open():
-                    fantas.Debug.send_debug_command(str(event))
+                if event.type != READDEBUGOUTPUT:
+                    fantas.Debug.send_debug_command(str(event), "EventLog")
                 # === 调试 ===
                 self.event_handler.handle_event(event)
             # === 调试 ===
-            # 处理调试输出
-            while not fantas.Debug.queue.empty():
-                output = fantas.Debug.queue.get()
-                self.handle_debug_output(output)
+            time_list.append(fantas.get_time_ns())
             # === 调试 ===
             # 生成渲染命令
             self.renderer.pre_render(self.root_ui)
+            # === 调试 ===
+            time_list.append(fantas.get_time_ns())
+            # === 调试 ===
             # 渲染窗口
             self.renderer.render(self.screen)
             # 更新窗口显示
             self.flip()
+            # === 调试 ===
+            time_list.append(fantas.get_time_ns())
+            fantas.Debug.send_debug_command(str(time_list), "FrameTime")
+            time_list.clear()
+            # === 调试 ===
         # 退出主循环后销毁窗口
         self.destroy()
     
+    def read_debug_output(self, event: fantas.Event):
+        """
+        处理从调试窗口接收到的输出信息事件。
+        Args:
+            event (fantas.Event): 触发此事件的 fantas.Event 实例。
+        """
+        while not fantas.Debug.queue.empty():
+            output = fantas.Debug.queue.get()
+            self.handle_debug_output(output)
+
     def handle_debug_output(self, output: str):
         """
         处理从调试窗口接收到的输出信息。
