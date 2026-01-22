@@ -48,7 +48,7 @@ class Renderer:
             command (fantas.RenderCommand): 渲染命令对象，必须实现 render(target_surface) 方法。
         """
         self.queue.appendleft(command)
-    
+
     def coordinate_hit_test(self, point: fantas.IntPoint) -> fantas.UI:
         """
         根据给定的坐标点进行命中测试，返回位于该点的最上层 UI 元素。
@@ -76,7 +76,7 @@ class RenderCommand:
             target_surface (fantas.Surface): 目标 Surface 对象。
         """
         raise NotImplementedError("子类未实现 render 方法。")
-    
+
     def hit_test(self, point: fantas.IntPoint) -> bool:
         """
         命中测试，判断给定的坐标点是否在此渲染命令的区域内。
@@ -103,7 +103,7 @@ class SurfaceRenderCommand(RenderCommand):
             target_surface (fantas.Surface): 目标 Surface 对象。
         """
         self.dest_rect = target_surface.blit(self.surface, self.dest_rect)
-    
+
     def hit_test(self, point: fantas.IntPoint) -> bool:
         """
         命中测试。
@@ -186,7 +186,7 @@ class ColorTextLineRenderCommand(RenderCommand):
             target_surface (fantas.Surface): 目标 Surface 对象。
         """
         self.affected_rect = self.font.render_to(target_surface, self.origin, self.text, self.fgcolor, size=self.size)
-    
+
     def hit_test(self, point: fantas.IntPoint) -> bool:
         """
         命中测试。
@@ -224,7 +224,7 @@ class QuarterCircleRenderCommand(RenderCommand):
             target_surface (fantas.Surface): 目标 Surface 对象。
         """
         fantas.draw.aacircle(target_surface, self.color, self.center, self.radius, width=self.width, **quadrant_map[self.quadrant])
-    
+
     def hit_test(self, point: fantas.Point) -> bool:
         """
         命中测试。

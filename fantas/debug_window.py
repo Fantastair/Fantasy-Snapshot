@@ -48,7 +48,8 @@ lpf_map = {
 }
 
 # 中文字体支持
-chinese_font = fantas.freetype.SysFont(("SimHei", "Microsoft YaHei", "notoserifcjksc"), 16)
+chinese_font = fantas.freetype.SysFont(("SimHei", "Microsoft YaHei", "notosansmonocjksc"), 16)
+chinese_font.origin = True
 
 class RatioBar:
     """
@@ -148,7 +149,7 @@ class LegendBox:
                 text=desc,
                 size=24.0,
                 fgcolor=fantas.Color("#e3e3e3"),
-                rect=fantas.Rect(42, 13 + (i-1)*32, 0, 0),
+                rect=fantas.Rect(42, 3 + i*32, 0, 0),
                 font=chinese_font,
             )
             self.legend_box.append(desc_text)
@@ -156,7 +157,7 @@ class LegendBox:
                 text="0 ms",
                 size=24.0,
                 fgcolor=fantas.Color("#e3e3e3"),
-                rect=fantas.Rect(150, 16 + (i-1)*32, 0, 0),
+                rect=fantas.Rect(150, 3 + i*32, 0, 0),
                 font=chinese_font,
             )
             self.legend_box.append(time_text)
@@ -229,7 +230,7 @@ class EventLogBox:
                 text="",
                 size=self.line_height - 4,
                 fgcolor=fantas.Color("#e3e3e3"),
-                rect=fantas.Rect(8, (i-0.5)*self.line_height, 0, 0),
+                rect=fantas.Rect(8, (self.line_height - height % self.line_height) / 2 + i*self.line_height, 0, 0),
                 font=chinese_font,
             )
             self.box.append(text_line)

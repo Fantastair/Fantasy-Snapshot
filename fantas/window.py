@@ -106,10 +106,12 @@ class Window(PygameWindow):
         if not fantas.Debug.is_debug_window_open():
             raise RuntimeError("调试窗口未打开，无法进入调试主循环。")
         # === 调试 ===
+
         # 清空事件队列
         fantas.event.clear()
         # 预生成传递路径缓存
         self.root_ui.build_pass_path_cache()
+
         # === 调试 ===
         # 监听调试输出事件
         READDEBUGOUTPUT = fantas.custom_event()
@@ -118,36 +120,48 @@ class Window(PygameWindow):
         fantas.time.set_timer(fantas.Event(READDEBUGOUTPUT), 100)
         time_list: list[int] = []
         # === 调试 ===
+
         # 主循环
         while self.running:
+
             # === 调试 ===
             time_list.append(fantas.get_time_ns())
             # === 调试 ===
+
             # 限制帧率
             self.clock.tick(self.fps)
+
             # === 调试 ===
             time_list.append(fantas.get_time_ns())
             # === 调试 ===
+
             # 处理事件
             for event in fantas.event.get():
+
                 # === 调试 ===
                 # 发送事件信息到调试窗口
                 if event.type != READDEBUGOUTPUT:
                     fantas.Debug.send_debug_command(str(event), "EventLog")
                 # === 调试 ===
+
                 self.event_handler.handle_event(event)
+
             # === 调试 ===
             time_list.append(fantas.get_time_ns())
             # === 调试 ===
+
             # 生成渲染命令
             self.renderer.pre_render(self.root_ui)
+
             # === 调试 ===
             time_list.append(fantas.get_time_ns())
             # === 调试 ===
+
             # 渲染窗口
             self.renderer.render(self.screen)
             # 更新窗口显示
             self.flip()
+
             # === 调试 ===
             time_list.append(fantas.get_time_ns())
             fantas.Debug.send_debug_command(str(time_list), "FrameTime")

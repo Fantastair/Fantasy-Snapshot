@@ -44,7 +44,7 @@ class ColorLabel(fantas.UI):
     fgcolor: fantas.ColorLike          = 'white'                                                      # 前景颜色
     rect   : fantas.RectLike           = field(default_factory=lambda: fantas.Rect(0, 0, 100, 50))    # 矩形区域
     border_radius: int | float         = 0.0                                                          # 边框圆角半径
-    border_width : int | float         = 0.0                                                          # 边框宽度
+    border_width : int                 = 0                                                            # 边框宽度
     quadrant     : fantas.QuadrantMask = 0b111111                                                     # 圆角象限掩码
     box_mode     : fantas.BoxMode      = fantas.BoxMode.INSIDE                                        # 盒子模式
 
@@ -180,7 +180,8 @@ class ColorLabel(fantas.UI):
         yield bb
         yield lb
         yield rb
-        bw -= 1
+        # if bw > 1:
+        #     bw -= 1
         if tl_on:
             tlb.color, tlb.center, tlb.radius, tlb.width = fgcolor, (left_radius, top_radius), radius, bw
             yield tlb
@@ -371,7 +372,8 @@ class ColorLabel(fantas.UI):
         yield bb
         yield lb
         yield rb
-        bw -= 1
+        # if bw > 1:
+        #     bw -= 1
         if tl_on:
             tl_center = (left_radius, top_radius)
             tl.color, tl.center, tl.radius, tl.width = bgcolor, tl_center, radius_bw, 0
