@@ -36,15 +36,16 @@ class ColorTextLine(fantas.UI):
         rc = self.color_text_line_render_command
         left, top = self.rect.topleft
         font = self.font
+        size = self.size
         # 设置文本内容
         rc.text = self.text
         # 设置字体
         rc.font = font
         # 设置字体大小
-        rc.size = self.size
+        rc.size = size
         # 设置文本颜色
         rc.fgcolor = self.fgcolor
         # 设置文本原点
-        rc.origin = (left + offset[0], top + offset[1] + font.get_sized_ascender(self.size))
+        rc.origin = (left + offset[0], top + offset[1] + font.get_sized_ascender(size))
         # 生成渲染命令
         yield rc

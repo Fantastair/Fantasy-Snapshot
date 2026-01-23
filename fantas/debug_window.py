@@ -48,7 +48,7 @@ lpf_map = {
 }
 
 # 中文字体支持
-chinese_font = fantas.freetype.SysFont(("SimHei", "Microsoft YaHei", "notosansmonocjksc"), 16)
+chinese_font = fantas.freetype.SysFont(("SimHei", "Microsoft YaHei", "Maple Mono Normal NF CN"), 16)
 chinese_font.origin = True
 
 class RatioBar:
@@ -112,8 +112,7 @@ class RatioBar:
             x += width
             time = lpf_map[f"{key}Time"](times[key] / 1e6)
             self.legend_box.time_texts[key].text = f"{time:.2f} ms"
-        if x < self.box.rect.width:
-            self.sub_bar["Idle"].rect.width += self.box.rect.width - x
+        self.sub_bar["Idle"].rect.width = self.box.rect.width - self.sub_bar["Idle"].rect.left
 
 class LegendBox:
     """
@@ -123,7 +122,7 @@ class LegendBox:
         self.legend_box = fantas.ColorLabel(
             bgcolor=fantas.Color("#303030"),
             fgcolor=fantas.Color("#e3e3e3"),
-            rect=fantas.Rect(0, 0, 260, 136),
+            rect=fantas.Rect(0, 0, 270, 136),
             border_radius=12,
             border_width=3,
             box_mode=fantas.BoxMode.OUTSIDE,
@@ -149,7 +148,7 @@ class LegendBox:
                 text=desc,
                 size=24.0,
                 fgcolor=fantas.Color("#e3e3e3"),
-                rect=fantas.Rect(42, 3 + i*32, 0, 0),
+                rect=fantas.Rect(42, 6 + i*32, 0, 0),
                 font=chinese_font,
             )
             self.legend_box.append(desc_text)
@@ -157,7 +156,7 @@ class LegendBox:
                 text="0 ms",
                 size=24.0,
                 fgcolor=fantas.Color("#e3e3e3"),
-                rect=fantas.Rect(150, 3 + i*32, 0, 0),
+                rect=fantas.Rect(160, 6 + i*32, 0, 0),
                 font=chinese_font,
             )
             self.legend_box.append(time_text)
@@ -189,7 +188,7 @@ class FrameTimer:
         self.fps_lpf = make_lpf(0.05, 5)
         # 比例条宽度
         self.fps_text_width = 160
-        self.bar_width = width - self.fps_text_width - 30
+        self.bar_width = width - self.fps_text_width - 28
         # 图例
         self.legend_box = LegendBox(parent_ui)
         # 比例条

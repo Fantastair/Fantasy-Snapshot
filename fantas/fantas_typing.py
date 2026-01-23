@@ -4,7 +4,7 @@ import pygame
 __all__ = (
     "Surface",
     "Font",
-    "RectLike", "Rect",
+    "RectLike", "Rect", "IntRect",
     "ColorLike", "Color",
     "Point", "IntPoint",
     "Event", "EventType",
@@ -15,8 +15,8 @@ __all__ = (
 from pygame import Surface          # 表面类
 from pygame.freetype import Font    # 字体类
 
-RectLike:  TypeAlias = pygame.typing.RectLike     # 矩形类型
-from pygame import FRect as Rect                  # 矩形类
+RectLike:  TypeAlias = pygame.typing.RectLike        # 矩形类型
+from pygame import FRect as Rect, Rect as IntRect    # 矩形类
 
 ColorLike: TypeAlias = pygame.typing.ColorLike    # 颜色类型
 from pygame import Color                          # 颜色类

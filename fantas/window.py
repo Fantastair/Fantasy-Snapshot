@@ -118,16 +118,11 @@ class Window(PygameWindow):
         fantas.event.set_allowed(READDEBUGOUTPUT)
         self.add_event_listener(READDEBUGOUTPUT, self.root_ui, True, self.read_debug_output)
         fantas.time.set_timer(fantas.Event(READDEBUGOUTPUT), 100)
-        time_list: list[int] = []
+        time_list: list[int] = [fantas.get_time_ns()]
         # === 调试 ===
 
         # 主循环
         while self.running:
-
-            # === 调试 ===
-            time_list.append(fantas.get_time_ns())
-            # === 调试 ===
-
             # 限制帧率
             self.clock.tick(self.fps)
 
@@ -165,7 +160,9 @@ class Window(PygameWindow):
             # === 调试 ===
             time_list.append(fantas.get_time_ns())
             fantas.Debug.send_debug_command(str(time_list), "FrameTime")
+            t = time_list.pop()
             time_list.clear()
+            time_list.append(t)
             # === 调试 ===
         # 退出主循环后销毁窗口
         self.destroy()

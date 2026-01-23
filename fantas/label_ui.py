@@ -81,13 +81,18 @@ class ColorLabel(fantas.UI):
         # 调整矩形区域
         rect = self.rect.move(offset)
         offset = rect.topleft
+        if isinstance(rect, fantas.Rect):
+            rect = fantas.IntRect(rect)
         if self.box_mode == fantas.BoxMode.OUTSIDE:
             rect.inflate_ip(self.border_width * 2, self.border_width * 2)
         elif self.box_mode == fantas.BoxMode.INOUTSIDE:
             rect.inflate_ip(self.border_width, self.border_width)
-        # 限制圆角半径
+        # 限制圆角半径和边框宽度
         border_radius = self.border_radius
-        self.border_radius = min(self.border_radius, rect.width / 2, rect.height / 2)
+        border_width  = self.border_width
+        min_half_size = min(rect.width, rect.height) / 2
+        self.border_radius = round(border_radius) if border_radius < min_half_size else round(min_half_size)
+        self.border_width  = border_width  if border_width  < min_half_size else round(min_half_size)
         # 计算渲染样式键
         render_style_key = ((self.bgcolor is not None) << 2) | ((self.border_width >= 1) << 1) | (self.border_radius >= 1)
         # 生成对应的渲染命令。
@@ -95,8 +100,9 @@ class ColorLabel(fantas.UI):
             yield from crc_bwr_map[render_style_key](self, rect)
         # 生成子元素的渲染命令
         yield from fantas.UI.create_render_commands(self, offset)
-        # 恢复圆角半径
+        # 恢复圆角半径和边框宽度
         self.border_radius = border_radius
+        self.border_width  = border_width
 
     def crc_bwr_010(self, rect: fantas.RectLike):
         """

@@ -13,8 +13,8 @@ window.append(background)
 
 # 创建测试标签
 test_label = fantas.ColorLabel(
-    bgcolor=None,
-    # bgcolor=fantas.Color("#3498db"),
+    # bgcolor=None,
+    bgcolor=fantas.Color("#3498db"),
     fgcolor=fantas.Color("#303030"),
     rect=fantas.Rect(100, 100, 400, 200),
     border_radius=40,
