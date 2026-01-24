@@ -11,49 +11,6 @@ window = fantas.Window(window_config)
 background = fantas.ColorBackground(bgcolor=fantas.Color("#e3e3e3"))
 window.append(background)
 
-# 创建测试标签
-test_label = fantas.ColorLabel(
-    # bgcolor=None,
-    bgcolor=fantas.Color("#3498db"),
-    fgcolor=fantas.Color("#303030"),
-    rect=fantas.Rect(100, 100, 400, 200),
-    border_radius=40,
-    border_width=8,
-    # quadrant=fantas.Quadrant.TOPLEFT | fantas.Quadrant.BOTTOMRIGHT,
-)
-background.append(test_label)
-test_label.rect.center = (window.size[0] // 2, window.size[1] // 2)
-
-# 创建测试文字行
-test_text = fantas.ColorTextLine(
-    rect=fantas.Rect(0, 0, 0, 0),
-    text="Hello Fantas3!",
-    size=48.0,
-)
-# test_label.append(test_text)
-
-def enter_test_label(event: fantas.Event) -> bool:
-    """ 鼠标移入测试标签时的回调函数。 """
-    if event.ui is test_label:
-        test_label.bgcolor = fantas.Color("#29b952")    # 设置背景色为绿色
-
-def leave_test_label(event: fantas.Event) -> bool:
-    """ 鼠标移出测试标签时的回调函数。 """
-    if event.ui is test_label:
-        test_label.bgcolor = fantas.Color("#3498db")    # 恢复背景色为蓝色
-
-count = 0
-def click_test_label(event: fantas.Event) -> bool:
-    """ 鼠标点击测试标签时的回调函数。 """
-    global count
-    if event.ui is test_label:
-        count += 1
-        print(f"测试标签被点击了{count}次！")
-
-# window.add_event_listener(fantas.MOUSEENTERED, test_label, False, enter_test_label)    
-# window.add_event_listener(fantas.MOUSELEAVED,  test_label, False, leave_test_label)
-# window.add_event_listener(fantas.MOUSECLICKED, test_label, False, click_test_label)
-
 class TestSlider:
     """
     测试滑块组件。
@@ -63,13 +20,13 @@ class TestSlider:
         self.end = end
         self.value = init_value
         self.set_func = set_func
-        self.name_text = fantas.ColorTextLine(
+        self.name_text = fantas.TextLine(
             text=name,
             size=32,
             rect=fantas.Rect(topleft, (0, 0)),
         )
         background.append(self.name_text)
-        self.slider_bar = fantas.ColorLabel(
+        self.slider_bar = fantas.Label(
             bgcolor=fantas.Color("#888888"),
             fgcolor=fantas.Color("#303030"),
             rect=fantas.Rect(topleft[0] + 120, topleft[1] + 4, 400, 24),
@@ -77,13 +34,13 @@ class TestSlider:
             border_width=4,
         )
         background.append(self.slider_bar)
-        self.active_bar = fantas.ColorLabel(
+        self.active_bar = fantas.Label(
             bgcolor=fantas.Color("#6EDE3A"),
             rect=fantas.Rect(4, 4, 0, 16),
             border_radius=8,
         )
         self.slider_bar.append(self.active_bar)
-        self.slider = fantas.ColorLabel(
+        self.slider = fantas.Label(
             bgcolor=fantas.Color("#888888"),
             fgcolor=fantas.Color("#303030"),
             rect=fantas.Rect(0, 0, 24, 24),
@@ -92,7 +49,7 @@ class TestSlider:
         )
         self.slider_activated = False
         self.slider_bar.append(self.slider)
-        self.value_text = fantas.ColorTextLine(
+        self.value_text = fantas.TextLine(
             text="",
             size=24,
             rect=fantas.Rect(topleft[0] + 560, topleft[1] + 4, 0, 0),
@@ -147,16 +104,42 @@ class TestSlider:
             self.set_func(self.value)
         return False
 
-top_slider    = TestSlider("top",    (10, 10 + 40 * 1), 0.0, window.size[1], test_label.rect.top,      lambda v: setattr(test_label.rect, 'top', v))
-left_slider   = TestSlider("left",   (10, 10 + 40 * 0), 0.0, window.size[0], test_label.rect.left,     lambda v: setattr(test_label.rect, 'left', v))
-width_slider  = TestSlider("width",  (10, 10 + 40 * 2), 0.0, window.size[0], test_label.rect.width,    lambda v: setattr(test_label.rect, 'width', v))
-height_slider = TestSlider("height", (10, 10 + 40 * 3), 0.0, window.size[1], test_label.rect.height,   lambda v: setattr(test_label.rect, 'height', v))
-radius_slider = TestSlider("radius", (10, 10 + 40 * 4), 0.0, 400.0,          test_label.border_radius, lambda v: setattr(test_label, 'border_radius', v))
-bw_slider     = TestSlider("bw",     (10, 10 + 40 * 5), 0.0, 10.0,           test_label.border_width,  lambda v: setattr(test_label, 'border_width', int(v)))
+# top_slider    = TestSlider("top",    (10, 10 + 40 * 1), 0.0, window.size[1], test_label.rect.top,      lambda v: setattr(test_label.rect, 'top', v))
+# left_slider   = TestSlider("left",   (10, 10 + 40 * 0), 0.0, window.size[0], test_label.rect.left,     lambda v: setattr(test_label.rect, 'left', v))
+# width_slider  = TestSlider("width",  (10, 10 + 40 * 2), 0.0, window.size[0], test_label.rect.width,    lambda v: setattr(test_label.rect, 'width', v))
+# height_slider = TestSlider("height", (10, 10 + 40 * 3), 0.0, window.size[1], test_label.rect.height,   lambda v: setattr(test_label.rect, 'height', v))
+# radius_slider = TestSlider("radius", (10, 10 + 40 * 4), 0.0, 400.0,          test_label.border_radius, lambda v: setattr(test_label, 'border_radius', v))
+# bw_slider     = TestSlider("bw",     (10, 10 + 40 * 5), 0.0, 10.0,           test_label.border_width,  lambda v: setattr(test_label, 'border_width', int(v)))
+
+l = fantas.Label(
+    bgcolor=None,
+    fgcolor='black',
+    rect=fantas.Rect(600, 500, 600, 64),
+    box_mode=fantas.BoxMode.OUTSIDE,
+    border_width=10,
+)
+background.append(l)
+
+chinese_font = fantas.freetype.SysFont("Maple Mono Normal NF CN", 16)
+chinese_font.origin = True
+
+test_text = fantas.TextLine(
+    text="Fantas3 Test",
+    size=64,
+    origin=(window.size[0] / 2, window.size[1] / 2)
+)
+background.append(test_text)
+test_text = fantas.TextLine(
+    text="Fantas3 测试",
+    size=64,
+    font=chinese_font,
+    origin=(window.size[0] / 2 + 200, window.size[1] / 2)
+)
+background.append(test_text)
 
 # 运行主循环
-window.mainloop()
+# window.mainloop()
 
 # 调试模式
-# fantas.Debug.open_debug_window(window, 0, 0, 2557, (1600 - window.size[1]) // 2 - 50)
-# window.mainloop_debug()
+fantas.Debug.open_debug_window(window, 0, 0, 2557, (1600 - window.size[1]) // 2 - 50)
+window.mainloop_debug()

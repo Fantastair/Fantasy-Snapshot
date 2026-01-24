@@ -46,12 +46,12 @@ ColorBackground(
 - **bgcolor (fantas.ColorLike)**: 背景颜色。
 - **command (fantas.ColorBackgroundFillCommand)**: 用于填充背景颜色的渲染命令。
 
-## fantas.ColorLabel
+## fantas.Label
 
 纯色矩形 UI 类。
 
 ``` python
-ColorLabel(
+Label(
     bgcolor: fantas.ColorLike | None   = 'black'
     fgcolor: fantas.ColorLike          = 'white'
     rect   : fantas.RectLike           = fantas.Rect(0, 0, 100, 50)
@@ -59,7 +59,7 @@ ColorLabel(
     border_width : int | float         = 0.0
     quadrant     : fantas.QuadrantMask = 0b111111
     box_mode     : fantas.BoxMode      = fantas.BoxMode.INSIDE
-) -> fantas.ColorLabel
+) -> fantas.Label
 ```
 
 ### 属性
@@ -74,20 +74,42 @@ ColorLabel(
 - **border_width (int | float)**: 边框宽度。
 - **quadrant (fantas.QuadrantMask)**: 指定哪些角是圆角。
 - **box_mode (fantas.BoxMode)**: 边框绘制模式。
-- **render_commands (ColorLabelRenderCommands)**: 渲染命令容器。
+- **render_commands (LabelRenderCommands)**: 渲染命令容器。
 
-## fantas.ColorTextLine
+## fantas.SurfaceLabel
+
+显示图像的矩形 UI 类。
+
+``` python
+SurfaceLabel(
+    surface : fantas.SurfaceLike
+    rect    : fantas.RectLike        = fantas.DEFAULTRECT
+    fill_mode: fantas.FillMode      = fantas.FillMode.IGNORE
+) -> fantas.SurfaceLabel
+```
+
+### 属性
+
+- **father (UI | None)**: 指向父显示元素。
+- **children (List[UI\])**: 子显示元素列表。
+- **ui_id (fantas.UIID)**: 唯一标识 ID。
+- **surface (fantas.SurfaceLike)**: 显示的 `Surface` 对象。
+- **rect (fantas.RectLike)**: 矩形区域。
+- **fill_mode (fantas.FillMode)**: 填充模式。
+- **command (fantas.SurfaceRenderCommand)**: 用于绘制图像的渲染命令。
+
+## fantas.TextLine
 
 纯色单行文本 UI 类。
 
 ``` python
-ColorTextLine(
+TextLine(
     text    : str                = 'text'
     font    : fantas.Font        = fantas.DEFAULTFONT
     fgcolor : fantas.ColorLike   = 'black'
     size    : float              = 16.0
-    rect    : fantas.RectLike    = fantas.DEFAULTRECT)
-) -> fantas.ColorTextLine
+    origin  : fantas.Point       = (0, 0)
+) -> fantas.TextLine
 ```
 
 ### 属性
@@ -99,5 +121,5 @@ ColorTextLine(
 - **font (fantas.Font)**: 字体。
 - **fgcolor (fantas.ColorLike)**: 文本颜色。
 - **size (float)**: 字体大小。
-- **rect (fantas.RectLike)**: 定位矩形。
-- **color_text_line_render_command (fantas.ColorTextLineRenderCommand)**: 用于绘制文本的渲染命令。
+- **origin (fantas.Point)**: 定位原点。
+- **command (fantas.TextLineRenderCommand)**: 用于绘制文本的渲染命令。

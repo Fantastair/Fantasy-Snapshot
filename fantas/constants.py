@@ -13,6 +13,7 @@ __all__ = [
 
     "Quadrant",
     "BoxMode",
+    "FillMode",
 
     "WINDOWPOS_UNDEFINED",
     "WINDOWPOS_CENTERED",
@@ -75,6 +76,15 @@ class BoxMode(Enum):
     INSIDE     = auto()    # 内部盒子，表示边框只会向内部扩展
     OUTSIDE    = auto()    # 外部盒子，表示边框只会向外部扩展
     INOUTSIDE  = auto()    # 中间盒子，表示边框会向内部和外部同时扩展
+
+class FillMode(Enum):
+    """ Surface 填充模式枚举。 """
+    IGNORE = auto()          # 忽略填充模式，只对齐 topleft，不关心 size
+    SCALE  = auto()          # 缩放填充模式，对齐 topleft 并缩放图片至目标 size
+    SMOOTHSCALE  = auto()    # 平滑缩放填充模式，对齐 topleft 并平滑缩放图片至目标 size
+    REPEAT = auto()          # 重复填充模式，对齐 topleft 并重复平铺图片至目标 size
+    FITMIN = auto()          # 最小适应填充模式，等比缩放图片，确保图片完整显示在目标 rect 内（可能留有空白）
+    FITMAX = auto()          # 最大适应填充模式，等比缩放图片，确保图片覆盖整个目标 rect（超出部分将被裁剪）
 
 class EventCategory(Enum):
     """ 事件分类枚举。 """

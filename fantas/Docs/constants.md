@@ -29,6 +29,16 @@
   - `fantas.BoxMode.OUTSIDE`: 边框向外扩展。
   - `fantas.BoxMode.INOUTSIDE`: 边框向内外各扩展一半。
 
+- **FillMode**
+  Surface 填充模式枚举。
+
+  - `fantas.FillMode.IGNORE`: 忽略填充模式，只对齐 topleft，不关心 size。
+  - `fantas.FillMode.SCALE`: 缩放填充模式，对齐 topleft 并缩放图片至目标 size。
+  - `fantas.FillMode.SMOOTHSCALE`: 平滑缩放填充模式，对齐 topleft 并平滑缩放图片至目标 size。
+  - `fantas.FillMode.REPEAT`: 重复填充模式，对齐 topleft 并重复平铺图片至目标 size。
+  - `fantas.FillMode.FITMIN`: 最小适应填充模式，等比缩放图片，确保图片完整显示在目标 rect 内（可能留有空白）。
+  - `fantas.FillMode.FITMAX`: 最大适应填充模式，等比缩放图片，确保图片覆盖整个目标 rect（超出部分将被裁剪）。
+
 - **fantas.EventCategory**
   fantas 的事件分类枚举。
   包含如下类别：

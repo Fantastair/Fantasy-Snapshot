@@ -109,7 +109,18 @@ WindowConfig(
   `mainloop_debug()`
   和普通主循环的区别在于会发送调试信息给调试窗口，只有在调试窗口打开时才会生效，如果你没有使用调试窗口的需要，不要使用这个函数，通信是会消耗性能的。
 
+- **read_debug_output()**
+  处理从调试窗口接收到输出信息的事件。
+  `read_debug_output(event: fantas.Event)`
+  调试模式下，这个方法会被自动挂载到根节点的监听器上。
+
 - **handle_debug_output()**
   处理从调试窗口接收到的输出信息。
   `handle_debug_output(output: str)`
   在这里可以处理从调试窗口接收到的输出信息，比如执行一些调试命令等。
+
+- **send_mouse_surface_debug()**
+  发送鼠标位置附近的 Surface 截图到调试窗口。
+  `send_mouse_surface_debug(event: fantas.Event)`
+  调试模式下，这个方法会被自动挂载到根节点的监听器上，当收到鼠标移动事件时触发。
+  它会获取鼠标位置附近的 Surface 截图，并将其编码为 Base64 字符串发送到调试窗口。

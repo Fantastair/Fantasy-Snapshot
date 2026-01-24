@@ -4,7 +4,8 @@ from dataclasses import dataclass, field
 import fantas
 
 __all__ = (
-    "ColorLabel",
+    "Label",
+    "SurfaceLabel",
 )
 
 # 简化引用
@@ -12,8 +13,8 @@ ColorFillCommand = fantas.ColorFillCommand
 QuarterCircleRenderCommand = fantas.QuarterCircleRenderCommand
 
 @dataclass(slots=True)
-class ColorLabelRenderCommands:
-    """ ColorLabel 渲染命令容器。 """
+class LabelRenderCommands:
+    """ Label 渲染命令容器。 """
     top               : ColorFillCommand              # 上填充命令
     bottom            : ColorFillCommand              # 下填充命令
     center            : ColorFillCommand              # 中填充命令
@@ -34,7 +35,7 @@ class ColorLabelRenderCommands:
     bottomright_border: QuarterCircleRenderCommand    # 右下角圆角边框命令
 
 @dataclass(slots=True)
-class ColorLabel(fantas.UI):
+class Label(fantas.UI):
     """ 纯色矩形 UI 类 """
     father  : fantas.UI | None = field(default=None, init=False, repr=False)                     # 指向父显示元素
     children: list[fantas.UI]  = field(default_factory=list, init=False, repr=False)             # 子显示元素列表
@@ -48,11 +49,11 @@ class ColorLabel(fantas.UI):
     quadrant     : fantas.QuadrantMask = 0b111111                                                     # 圆角象限掩码
     box_mode     : fantas.BoxMode      = fantas.BoxMode.INSIDE                                        # 盒子模式
 
-    render_commands: ColorLabelRenderCommands = field(init=False, repr=False)                    # 渲染命令容器
+    render_commands: LabelRenderCommands = field(init=False, repr=False)                    # 渲染命令容器
 
     def __post_init__(self):
-        """ 初始化 ColorLabel 实例 """
-        self.render_commands = ColorLabelRenderCommands(
+        """ 初始化 Label 实例 """
+        self.render_commands = LabelRenderCommands(
             top                = ColorFillCommand(creator=self),
             bottom             = ColorFillCommand(creator=self),
             center             = ColorFillCommand(creator=self),
@@ -81,15 +82,18 @@ class ColorLabel(fantas.UI):
         # 调整矩形区域
         rect = self.rect.move(offset)
         offset = rect.topleft
+        bw = self.border_width
+        bw_2x = bw * 2
+        bm = self.box_mode
         if isinstance(rect, fantas.Rect):
             rect = fantas.IntRect(rect)
-        if self.box_mode == fantas.BoxMode.OUTSIDE:
-            rect.inflate_ip(self.border_width * 2, self.border_width * 2)
-        elif self.box_mode == fantas.BoxMode.INOUTSIDE:
-            rect.inflate_ip(self.border_width, self.border_width)
+        if bm == fantas.BoxMode.OUTSIDE:
+            rect.inflate_ip(bw_2x, bw_2x)
+        elif bm == fantas.BoxMode.INOUTSIDE:
+            rect.inflate_ip(bw, bw)
         # 限制圆角半径和边框宽度
         border_radius = self.border_radius
-        border_width  = self.border_width
+        border_width  = bw
         min_half_size = min(rect.width, rect.height) / 2
         self.border_radius = round(border_radius) if border_radius < min_half_size else round(min_half_size)
         self.border_width  = border_width  if border_width  < min_half_size else round(min_half_size)
@@ -97,7 +101,7 @@ class ColorLabel(fantas.UI):
         render_style_key = ((self.bgcolor is not None) << 2) | ((self.border_width >= 1) << 1) | (self.border_radius >= 1)
         # 生成对应的渲染命令。
         if render_style_key >> 1:    # 背景色和边框至少有一个存在
-            yield from crc_bwr_map[render_style_key](self, rect)
+            yield from Label_crc_bwr_map[render_style_key](self, rect)
         # 生成子元素的渲染命令
         yield from fantas.UI.create_render_commands(self, offset)
         # 恢复圆角半径和边框宽度
@@ -186,8 +190,8 @@ class ColorLabel(fantas.UI):
         yield bb
         yield lb
         yield rb
-        # if bw > 1:
-        #     bw -= 1
+        if bw > 1:
+            bw -= 1
         if tl_on:
             tlb.color, tlb.center, tlb.radius, tlb.width = fgcolor, (left_radius, top_radius), radius, bw
             yield tlb
@@ -378,8 +382,8 @@ class ColorLabel(fantas.UI):
         yield bb
         yield lb
         yield rb
-        # if bw > 1:
-        #     bw -= 1
+        if bw > 1:
+            bw -= 1
         if tl_on:
             tl_center = (left_radius, top_radius)
             tl.color, tl.center, tl.radius, tl.width = bgcolor, tl_center, radius_bw, 0
@@ -405,11 +409,48 @@ class ColorLabel(fantas.UI):
             yield br
             yield brb
 
-crc_bwr_map = {
-    0b010: ColorLabel.crc_bwr_010,
-    0b011: ColorLabel.crc_bwr_011,
-    0b100: ColorLabel.crc_bwr_100,
-    0b101: ColorLabel.crc_bwr_101,
-    0b110: ColorLabel.crc_bwr_110,
-    0b111: ColorLabel.crc_bwr_111,
+Label_crc_bwr_map = {
+    0b010: Label.crc_bwr_010,
+    0b011: Label.crc_bwr_011,
+    0b100: Label.crc_bwr_100,
+    0b101: Label.crc_bwr_101,
+    0b110: Label.crc_bwr_110,
+    0b111: Label.crc_bwr_111,
 }
+
+@dataclass(slots=True)
+class SurfaceLabel(fantas.UI):
+    """ 用于显示 Surface 对象的标签类 """
+    father  : fantas.UI | None = field(default=None, init=False, repr=False)                     # 指向父显示元素
+    children: list[fantas.UI]  = field(default_factory=list, init=False, repr=False)             # 子显示元素列表
+    ui_id   : fantas.UIID      = field(default_factory=fantas.generate_unique_id, init=False)    # 唯一标识 ID
+
+    surface  : fantas.Surface                                                                 # 显示的 Surface 对象
+    rect     : fantas.RectLike = field(default_factory=fantas.DEFAULTRECT.copy)               # 矩形区域
+    fill_mode: fantas.FillMode = fantas.FillMode.IGNORE                                       # 填充模式
+
+    command  : fantas.SurfaceRenderCommand = field(init=False, repr=False)                    # 渲染命令对象
+
+    def __post_init__(self):
+        """ 初始化 SurfaceLabel 实例 """
+        self.command = fantas.SurfaceRenderCommand(creator=self, surface=self.surface)
+
+    def create_render_commands(self, offset: fantas.Point = (0, 0)):
+        """
+        创建渲染命令列表
+        Args:
+            offset (fantas.Point): 当前元素的偏移位置，用于计算子元素的绝对位置。
+        Yields:
+            RenderCommand: 渲染命令对象。
+        """
+        # 调整矩形区域
+        rect = self.rect.move(offset)
+        offset = rect.topleft
+        # 生成 Surface 渲染命令
+        c = self.command
+        c.surface = self.surface
+        c.fill_mode = self.fill_mode
+        c.dest_rect.update(rect)
+        yield c
+        # 生成子元素的渲染命令
+        yield from fantas.UI.create_render_commands(self, offset)

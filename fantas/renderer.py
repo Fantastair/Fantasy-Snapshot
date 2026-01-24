@@ -92,9 +92,12 @@ class SurfaceRenderCommand(RenderCommand):
     """
     Surface 渲染命令类。
     """
-    creator  : fantas.UI         # 创建此渲染命令的 UI 元素
-    surface  : fantas.Surface    # 要渲染的 Surface 对象
-    dest_rect: fantas.RectLike = field(default_factory=fantas.DEFAULTRECT.copy)    # 目标矩形区域，指定渲染的位置
+    creator  : fantas.UI                                                           # 创建此渲染命令的 UI 元素
+    surface  : fantas.Surface                                                      # 要渲染的 Surface 对象
+    fill_mode: fantas.FillMode = fantas.FillMode.IGNORE                            # 填充模式
+    dest_rect: fantas.RectLike = field(default_factory=fantas.DEFAULTRECT.copy)    # 目标矩形区域
+
+    affected_area: fantas.RectLike = field(init=False, repr=False)                 # 受影响的矩形区域
 
     def render(self, target_surface: fantas.Surface):
         """
@@ -102,7 +105,7 @@ class SurfaceRenderCommand(RenderCommand):
         Args:
             target_surface (fantas.Surface): 目标 Surface 对象。
         """
-        self.dest_rect = target_surface.blit(self.surface, self.dest_rect)
+        SurfaceRenderCommand_render_map[self.fill_mode](self, target_surface)
 
     def hit_test(self, point: fantas.IntPoint) -> bool:
         """
@@ -112,7 +115,111 @@ class SurfaceRenderCommand(RenderCommand):
         Returns:
             bool: 如果点在区域内则返回 True，否则返回 False。
         """
-        return self.dest_rect.collidepoint(point)
+        return self.affected_area.collidepoint(point)
+
+    def render_IGNORE(self, target_surface: fantas.Surface):
+        """
+        执行 IGNORE 填充模式的渲染操作。
+        Args:
+            target_surface (fantas.Surface): 目标 Surface 对象。
+        """
+        try:
+            self.affected_area = target_surface.blit(self.surface, self.dest_rect)
+        except Exception as e:
+            print(self)
+            print(self.surface.get_locked())
+            print(target_surface.get_locked())
+            raise e
+
+    def render_SCALE(self, target_surface: fantas.Surface):
+        """
+        执行 SCALE 填充模式的渲染操作。
+        Args:
+            target_surface (fantas.Surface): 目标 Surface 对象。
+        """
+        rect = self.affected_area = self.dest_rect
+        target_surface.blit(fantas.transform.scale(self.surface, rect.size), rect)
+    
+    def render_SMOOTHSCALE(self, target_surface: fantas.Surface):
+        """
+        执行 SMOOTHSCALE 填充模式的渲染操作。
+        Args:
+            target_surface (fantas.Surface): 目标 Surface 对象。
+        """
+        rect = self.affected_area = self.dest_rect
+        target_surface.blit(fantas.transform.smoothscale(self.surface, rect.size), rect)
+
+    def render_REPEAT(self, target_surface: fantas.Surface):
+        """
+        执行 REPEAT 填充模式的渲染操作。
+        Args:
+            target_surface (fantas.Surface): 目标 Surface 对象。
+        """
+        # 简化引用
+        rect = self.affected_area = self.dest_rect
+        surface = self.surface
+        if isinstance(rect, fantas.Rect):
+            rect = fantas.IntRect(rect)
+        left, top, width, height = rect
+        w, h = surface.get_size()
+        # 计算重复次数并绘制
+        row_count, height_remain = divmod(height, h)
+        col_count, width_remain  = divmod(width,  w)
+        for row in range(row_count):
+            for col in range(col_count):
+                target_surface.blit(surface, (left + col * w, top + row * h))
+        top_row = top + row_count * h
+        left_col = left + col_count * w
+        # 绘制剩余部分
+        if height_remain > 0:
+            for col in range(left, left_col, w):
+                target_surface.blit(surface, (col, top_row), (0, 0, w, height_remain))
+        if width_remain > 0:
+            for row in range(top, top_row, h):
+                target_surface.blit(surface, (left_col, row), (0, 0, width_remain, h))
+        if height_remain > 0 and width_remain > 0:
+            target_surface.blit(surface, (left_col, top_row), (0, 0, width_remain, height_remain))
+
+    def render_FITMIN(self, target_surface: fantas.Surface):
+        """
+        执行 FITMIN 填充模式的渲染操作。
+        Args:
+            target_surface (fantas.Surface): 目标 Surface 对象。
+        """
+        # 简化引用
+        w, h = self.surface.get_size()
+        left, top, width, height = self.dest_rect
+        scale = min(width / w, height / h)
+        # 计算缩放后尺寸并居中绘制
+        w = round(w * scale)
+        h = round(h * scale)
+        self.affected_area = target_surface.blit(fantas.transform.smoothscale(self.surface, (w, h)), (left + (width - w) // 2, top + (height - h) // 2))
+
+    def render_FITMAX(self, target_surface: fantas.Surface):
+        """
+        执行 FITMAX 填充模式的渲染操作。
+        Args:
+            target_surface (fantas.Surface): 目标 Surface 对象。
+        """
+        # 简化引用
+        w, h = self.surface.get_size()
+        left, top, width, height = self.affected_area = self.dest_rect
+        scale = max(width / w, height / h)
+        # 计算缩放后尺寸并居中绘制
+        w = round(w * scale)
+        h = round(h * scale)
+        scaled_surface = fantas.transform.smoothscale(self.surface, (w, h))
+        target_surface.blit(scaled_surface, (left, top), ((w - width) // 2, (h - height) // 2, width, height))
+
+# SurfaceRenderCommand 渲染映射表
+SurfaceRenderCommand_render_map = {
+    fantas.FillMode.IGNORE     : SurfaceRenderCommand.render_IGNORE,
+    fantas.FillMode.SCALE      : SurfaceRenderCommand.render_SCALE,
+    fantas.FillMode.SMOOTHSCALE: SurfaceRenderCommand.render_SMOOTHSCALE,
+    fantas.FillMode.REPEAT     : SurfaceRenderCommand.render_REPEAT,
+    fantas.FillMode.FITMIN     : SurfaceRenderCommand.render_FITMIN,
+    fantas.FillMode.FITMAX     : SurfaceRenderCommand.render_FITMAX,
+}
 
 @dataclass(slots=True)
 class ColorFillCommand(RenderCommand):

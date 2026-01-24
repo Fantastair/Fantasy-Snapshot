@@ -79,12 +79,14 @@ Surface 渲染命令，直接将一个 Surface 对象绘制在目标 Surface 上
 SurfaceRenderCommand(
     creator  : fantas.UI,
     surface  : fantas.Surface,
+    fill_mode: fantas.FillMode = fantas.FillMode.IGNORE,
     dest_rect: fantas.RectLike = fantas.DEFAULTRECT,
 ) -> SurfaceRenderCommand
 ```
 
 - **creator (fantas.UI)**: 创建此渲染命令的 UI 元素。
 - **surface (fantas.Surface)**: 要绘制的 Surface 对象。
+- **fill_mode (fantas.FillMode)**: 填充模式。
 - **dest_rect (fantas.Rect)**: 绘制的矩形区域（相对于目标 Surface）。
 
 ## fantas.ColorFillCommand

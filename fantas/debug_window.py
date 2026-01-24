@@ -7,6 +7,7 @@ import re
 import sys
 import threading
 from queue import Queue
+from base64 import b64decode
 from collections import deque
 
 import fantas
@@ -40,10 +41,12 @@ lpf_map = {
     "Event":         make_lpf(0.05, 5),
     "PreRender":     make_lpf(0.05, 5),
     "Render":        make_lpf(0.05, 5),
+    "Debug":         make_lpf(0.05, 5),
     "Idle":          make_lpf(0.05, 5),
     "EventTime":     make_lpf(0.05, 5),
     "PreRenderTime": make_lpf(0.05, 5),
     "RenderTime":    make_lpf(0.05, 5),
+    "DebugTime":     make_lpf(0.05, 5),
     "IdleTime":      make_lpf(0.05, 5),
 }
 
@@ -57,27 +60,31 @@ class RatioBar:
     """
     def __init__(self, width: int, height: int, parent_ui: fantas.UI, legend_box: LegendBox):
         self.legend_box = legend_box
-        self.box = fantas.ColorLabel(
+        self.box = fantas.Label(
             bgcolor=None,
             rect=fantas.Rect(0, 0, width, height),
         )
         parent_ui.append(self.box)
         self.sub_bar = {
-            "Event": fantas.ColorLabel(
+            "Event": fantas.Label(
                 bgcolor=fantas.Color("#e74c3c"),
                 rect=fantas.Rect(0, 0, 0, height),
                 border_radius=6,
                 quadrant=fantas.Quadrant.TOPLEFT | fantas.Quadrant.BOTTOMLEFT,
             ),
-            "PreRender": fantas.ColorLabel(
+            "PreRender": fantas.Label(
                 bgcolor=fantas.Color("#9b59b6"),
                 rect=fantas.Rect(0, 0, 0, height),
             ),
-            "Render": fantas.ColorLabel(
+            "Render": fantas.Label(
                 bgcolor=fantas.Color("#f1c40f"),
                 rect=fantas.Rect(0, 0, 0, height),
             ),
-            "Idle": fantas.ColorLabel(
+            "Debug": fantas.Label(
+                bgcolor=fantas.Color("#7d7d7d"),
+                rect=fantas.Rect(0, 0, 0, height),
+            ),
+            "Idle": fantas.Label(
                 bgcolor=fantas.Color("#2ecc71"),
                 rect=fantas.Rect(0, 0, 0, height),
                 border_radius=6,
@@ -86,7 +93,7 @@ class RatioBar:
         }
         for bar in self.sub_bar.values():
             self.box.append(bar)
-    
+
     def set_time(self, time_list: list[int]):
         """
         设置各阶段时间并更新比例条显示。
@@ -94,14 +101,16 @@ class RatioBar:
             time_list (list[int]): 包含各阶段时间的列表，单位ns。
         """
         total_time = time_list[-1] - time_list[0]
-        idle_time = time_list[1] - time_list[0]
-        event_time = time_list[2] - time_list[1]
+        idle_time      = time_list[1] - time_list[0]
+        event_time     = time_list[2] - time_list[1]
         prerender_time = time_list[3] - time_list[2]
-        render_time = time_list[4] - time_list[3]
+        render_time    = time_list[4] - time_list[3]
+        debug_time     = time_list[5] - time_list[4]
         times = {
             "Idle": idle_time,
             "Event": event_time,
             "PreRender": prerender_time,
+            "Debug": debug_time,
             "Render": render_time,
         }
         x = 0
@@ -119,10 +128,10 @@ class LegendBox:
     图例框类，用于显示时间占比图例。
     """
     def __init__(self, parent_ui: fantas.UI):
-        self.legend_box = fantas.ColorLabel(
+        self.legend_box = fantas.Label(
             bgcolor=fantas.Color("#303030"),
             fgcolor=fantas.Color("#e3e3e3"),
-            rect=fantas.Rect(0, 0, 270, 136),
+            rect=fantas.Rect(0, 0, 240, 136),
             border_radius=12,
             border_width=3,
             box_mode=fantas.BoxMode.OUTSIDE,
@@ -132,31 +141,32 @@ class LegendBox:
             ("Event",     "#e74c3c", "事件处理"),
             ("PreRender", "#9b59b6", "预渲染"),
             ("Render",    "#f1c40f", "渲染"),
+            ("Debug",     "#7d7d7d", "调试"),
             ("Idle",      "#2ecc71", "空闲"),
         )
         self.time_texts = {}
         for i, (name, color, desc) in enumerate(legend_items):
-            color_box = fantas.ColorLabel(
+            color_box = fantas.Label(
                 bgcolor=fantas.Color(color),
                 fgcolor=fantas.Color("#e3e3e3"),
-                rect=fantas.Rect(10, 10 + i*32, 24, 24),
+                rect=fantas.Rect(6, 6 + i*26, 20, 20),
                 border_width=3,
                 box_mode=fantas.BoxMode.INSIDE,
             )
             self.legend_box.append(color_box)
-            desc_text = fantas.ColorTextLine(
+            desc_text = fantas.TextLine(
                 text=desc,
-                size=24.0,
+                size=20,
                 fgcolor=fantas.Color("#e3e3e3"),
-                rect=fantas.Rect(42, 6 + i*32, 0, 0),
+                origin=(38, 24 + i*26),
                 font=chinese_font,
             )
             self.legend_box.append(desc_text)
-            time_text = fantas.ColorTextLine(
+            time_text = fantas.TextLine(
                 text="0 ms",
-                size=24.0,
+                size=20,
                 fgcolor=fantas.Color("#e3e3e3"),
-                rect=fantas.Rect(160, 6 + i*32, 0, 0),
+                origin=(140, 24 + i*26),
                 font=chinese_font,
             )
             self.legend_box.append(time_text)
@@ -168,7 +178,7 @@ class FrameTimer:
     """
     def __init__(self, width: int, height: int, parent_ui: fantas.UI):
         # 显示框
-        self.box = fantas.ColorLabel(
+        self.box = fantas.Label(
             bgcolor=fantas.Color("#303030"),
             fgcolor=fantas.Color("#e3e3e3"),
             rect=fantas.Rect(0, 0, width, height),
@@ -178,11 +188,11 @@ class FrameTimer:
         )
         parent_ui.append(self.box)
         # 帧率文本
-        self.fps_text = fantas.ColorTextLine(
+        self.fps_text = fantas.TextLine(
             text="FPS: 0.0",
             size=24.0,
             fgcolor=fantas.Color("#e3e3e3"),
-            rect=fantas.Rect(8, 8, 0, 0),
+            origin=(8, 29),
         )
         self.box.append(self.fps_text)
         self.fps_lpf = make_lpf(0.05, 5)
@@ -194,7 +204,7 @@ class FrameTimer:
         # 比例条
         self.ratio_bar = RatioBar(self.bar_width, 24, self.box, self.legend_box)
         self.ratio_bar.box.rect.topleft = (self.fps_text_width + 20, 8)
-        
+
     def show_frame_time(self, time_list: list[int]):
         """
         显示帧时间信息。
@@ -211,7 +221,7 @@ class EventLogBox:
     事件日志框类，用于显示事件日志信息。
     """
     def __init__(self, width: int, height: int, parent_ui: fantas.UI):
-        self.box = fantas.ColorLabel(
+        self.box = fantas.Label(
             bgcolor=fantas.Color("#303030"),
             fgcolor=fantas.Color("#e3e3e3"),
             rect=fantas.Rect(0, 0, width, height),
@@ -223,13 +233,13 @@ class EventLogBox:
         self.line_height = 24
         self.max_lines = round(height / self.line_height - 1)
         self.lines: deque[str] = deque(['']*self.max_lines, maxlen=self.max_lines)
-        self.text_lines: list[fantas.ColorTextLine] = []
+        self.text_lines: list[fantas.TextLine] = []
         for i in range(self.max_lines):
-            text_line = fantas.ColorTextLine(
+            text_line = fantas.TextLine(
                 text="",
                 size=self.line_height - 4,
                 fgcolor=fantas.Color("#e3e3e3"),
-                rect=fantas.Rect(8, (self.line_height - height % self.line_height) / 2 + i*self.line_height, 0, 0),
+                origin=(8, (self.line_height - height % self.line_height) / 2 + i*self.line_height + 24),
                 font=chinese_font,
             )
             self.box.append(text_line)
@@ -246,6 +256,41 @@ class EventLogBox:
         self.lines.append(event_str)
         for i, line in enumerate(self.lines):
             self.text_lines[i].text = line
+
+class MouseSurface:
+    def __init__(self, parent_ui: fantas.UI):
+        self.box = fantas.Label(
+            bgcolor=None,
+            fgcolor=fantas.Color("#e3e3e3"),
+            rect=fantas.Rect(0, 0, 128, 128),
+            border_radius=3,
+            border_width=3,
+            box_mode=fantas.BoxMode.OUTSIDE,
+        )
+        parent_ui.append(self.box)
+        self.surface_label = fantas.SurfaceLabel(
+            surface=fantas.Surface((32, 32)),
+            rect=fantas.Rect(0, 0, 128, 128),
+            fill_mode=fantas.FillMode.SCALE,
+        )
+        self.box.append(self.surface_label)
+        self.cursor = fantas.Label(
+            bgcolor=None,
+            rect=fantas.Rect(62, 62, 4, 4),
+            border_width=1,
+        )
+        self.surface_label.append(self.cursor)
+
+    def update_surface(self, surface_bytes: str):
+        """
+        更新鼠标截图 Surface。
+        Args:
+            surface_bytes (str): 编码后的 Surface 字节数据字符串。
+        """
+        self.surface_label.surface.get_buffer().write(b64decode(surface_bytes[4:]))
+        self.cursor.rect.left = int(surface_bytes[0:2]) * 4
+        self.cursor.rect.top = int(surface_bytes[2:4]) * 4
+        self.cursor.fgcolor = fantas.Color(255, 255, 255) - self.surface_label.surface.get_at((16, 16))
 
 class DebugWindow(fantas.Window):
     """
@@ -265,8 +310,11 @@ class DebugWindow(fantas.Window):
         self.frame_timer = FrameTimer(window_config.window_size[0] - 20, 40, self.background)
         self.frame_timer.box.rect.topleft = (10, 10)
         self.frame_timer.legend_box.legend_box.rect.topleft = (10, self.frame_timer.box.rect.bottom + 13)
+        # 鼠标图像
+        self.mouse_surface = MouseSurface(self.background)
+        self.mouse_surface.box.rect.topright = (window_config.window_size[0] - 7, self.frame_timer.box.rect.bottom + 16)
         # 事件日志框
-        self.event_log_box = EventLogBox(window_config.window_size[0] - self.frame_timer.legend_box.legend_box.rect.right - 23, self.frame_timer.legend_box.legend_box.rect.height, self.background)
+        self.event_log_box = EventLogBox(self.mouse_surface.box.rect.left - self.frame_timer.legend_box.legend_box.rect.right - 23, self.frame_timer.legend_box.legend_box.rect.height, self.background)
         self.event_log_box.box.rect.topleft = (self.frame_timer.legend_box.legend_box.rect.right + 13, self.frame_timer.box.rect.bottom + 13)
 
     def read_debug_command(self):
@@ -297,7 +345,7 @@ class DebugWindow(fantas.Window):
             prompt = match.group(1)
             command = match.group(2)
             self.handle_debug_command(prompt, command)
-    
+
     def handle_debug_command(self, prompt: str, command: str):
         """
         处理调试命令。
@@ -311,6 +359,8 @@ class DebugWindow(fantas.Window):
             self.event_log_box.log_event(command)
         elif prompt == "FrameTime":
             self.frame_timer.show_frame_time(list(map(float, command[1:-1].split(', '))))
+        elif prompt == "MouseSurface":
+            self.mouse_surface.update_surface(command)
 
 debugwindow_config = fantas.WindowConfig(
     title=f"{sys.argv[1]} | 调试窗口",

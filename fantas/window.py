@@ -105,6 +105,7 @@ class Window(PygameWindow):
         # === 调试 ===
         if not fantas.Debug.is_debug_window_open():
             raise RuntimeError("调试窗口未打开，无法进入调试主循环。")
+        self.debug_time = 0    # 记录调试额外消耗时间，用于更精准的测量各阶段时间消耗
         # === 调试 ===
 
         # 清空事件队列
@@ -119,6 +120,8 @@ class Window(PygameWindow):
         self.add_event_listener(READDEBUGOUTPUT, self.root_ui, True, self.read_debug_output)
         fantas.time.set_timer(fantas.Event(READDEBUGOUTPUT), 100)
         time_list: list[int] = [fantas.get_time_ns()]
+        # 监听鼠标移动事件
+        self.add_event_listener(fantas.MOUSEMOTION, self.root_ui, True, self.debug_send_mouse_surface)
         # === 调试 ===
 
         # 主循环
@@ -127,7 +130,7 @@ class Window(PygameWindow):
             self.clock.tick(self.fps)
 
             # === 调试 ===
-            time_list.append(fantas.get_time_ns())
+            time_list.append(fantas.get_time_ns() - self.debug_time)    # 1，空闲时间
             # === 调试 ===
 
             # 处理事件
@@ -135,21 +138,23 @@ class Window(PygameWindow):
 
                 # === 调试 ===
                 # 发送事件信息到调试窗口
+                t = fantas.get_time_ns()
                 if event.type != READDEBUGOUTPUT:
                     fantas.Debug.send_debug_command(str(event), "EventLog")
+                self.debug_time += fantas.get_time_ns() - t
                 # === 调试 ===
 
                 self.event_handler.handle_event(event)
 
             # === 调试 ===
-            time_list.append(fantas.get_time_ns())
+            time_list.append(fantas.get_time_ns() - self.debug_time)    # 2，事件处理时间
             # === 调试 ===
 
             # 生成渲染命令
             self.renderer.pre_render(self.root_ui)
 
             # === 调试 ===
-            time_list.append(fantas.get_time_ns())
+            time_list.append(fantas.get_time_ns() - self.debug_time)    # 3，生成渲染命令时间
             # === 调试 ===
 
             # 渲染窗口
@@ -158,24 +163,28 @@ class Window(PygameWindow):
             self.flip()
 
             # === 调试 ===
-            time_list.append(fantas.get_time_ns())
+            t = fantas.get_time_ns()
+            time_list.append(t - self.debug_time)    # 4，渲染时间
+            time_list.append(t)                      # 5，结束时间，也是下一帧的起始时间
             fantas.Debug.send_debug_command(str(time_list), "FrameTime")
-            t = time_list.pop()
             time_list.clear()
-            time_list.append(t)
+            time_list.append(t)    # 0，起始时间
+            self.debug_time = fantas.get_time_ns() - t
             # === 调试 ===
         # 退出主循环后销毁窗口
         self.destroy()
     
     def read_debug_output(self, event: fantas.Event):
         """
-        处理从调试窗口接收到的输出信息事件。
+        处理从调试窗口接收到输出信息的事件。
         Args:
             event (fantas.Event): 触发此事件的 fantas.Event 实例。
         """
+        t = fantas.get_time_ns()
         while not fantas.Debug.queue.empty():
             output = fantas.Debug.queue.get()
             self.handle_debug_output(output)
+        self.debug_time += fantas.get_time_ns() - t
 
     def handle_debug_output(self, output: str):
         """
@@ -186,3 +195,27 @@ class Window(PygameWindow):
         # if output == "started":
             # self.focus()
         print(f"[Debug Output] {output}")
+    
+    def debug_send_mouse_surface(self, event: fantas.Event):
+        """
+        发送当前鼠标所在位置的 Surface 截图到调试窗口。
+        Args:
+            event (fantas.Event): 触发此事件的 fantas.Event 实例。
+        """
+        # 获取鼠标位置附近的 Surface 截图
+        t = fantas.get_time_ns()
+        from base64 import b64encode
+        size = 32
+        rect = fantas.IntRect(event.pos[0] - size // 2, event.pos[1] - size // 2, size, size)
+        if rect.left < 0:
+            rect.left = 0
+        if rect.top < 0:
+            rect.top = 0
+        if rect.right > self.size[0]:
+            rect.right = self.size[0]
+        if rect.bottom > self.size[1]:
+            rect.bottom = self.size[1]
+        surface_str = b64encode(self.screen.subsurface(rect).convert_alpha().get_buffer().raw).decode('utf-8')
+        # 发送到调试窗口
+        fantas.Debug.send_debug_command(f"{str(event.pos[0] - rect.left).rjust(2, '0')}{str(event.pos[1] - rect.top).rjust(2, '0')}{surface_str}", "MouseSurface")
+        self.debug_time += fantas.get_time_ns() - t
