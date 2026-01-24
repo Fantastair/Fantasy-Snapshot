@@ -123,13 +123,7 @@ class SurfaceRenderCommand(RenderCommand):
         Args:
             target_surface (fantas.Surface): 目标 Surface 对象。
         """
-        try:
-            self.affected_area = target_surface.blit(self.surface, self.dest_rect)
-        except Exception as e:
-            print(self)
-            print(self.surface.get_locked())
-            print(target_surface.get_locked())
-            raise e
+        self.affected_area = target_surface.blit(self.surface, self.dest_rect)
 
     def render_SCALE(self, target_surface: fantas.Surface):
         """
