@@ -3,6 +3,13 @@ from enum import Enum, IntEnum, auto
 
 import pygame
 import pygame.freetype
+from pygame.freetype import\
+    STYLE_DEFAULT   as TEXTSTYLEFLAG_DEFAULT,\
+    STYLE_NORMAL    as TEXTSTYLEFLAG_NORMAL,\
+    STYLE_STRONG    as TEXTSTYLEFLAG_STRONG,\
+    STYLE_OBLIQUE   as TEXTSTYLEFLAG_OBLIQUE,\
+    STYLE_UNDERLINE as TEXTSTYLEFLAG_UNDERLINE,\
+    STYLE_WIDE      as TEXTSTYLEFLAG_WIDE
 from pygame.locals import *
 
 import fantas
@@ -10,10 +17,12 @@ import fantas
 __all__ = [
     "DEFAULTRECT",
     "DEFAULTFONT",
+    "DEFAULTTEXTSTYLE",
 
     "Quadrant",
     "BoxMode",
     "FillMode",
+    "AlignMode",
 
     "WINDOWPOS_UNDEFINED",
     "WINDOWPOS_CENTERED",
@@ -54,12 +63,22 @@ __all__ = [
     "BUTTON_MIDDLE",
     "BUTTON_WHEELUP",
     "BUTTON_WHEELDOWN",
+
+    "TEXTSTYLEFLAG_DEFAULT",
+    "TEXTSTYLEFLAG_NORMAL",
+    "TEXTSTYLEFLAG_STRONG",
+    "TEXTSTYLEFLAG_OBLIQUE",
+    "TEXTSTYLEFLAG_UNDERLINE",
+    "TEXTSTYLEFLAG_WIDE",
 ]
 
 DEFAULTRECT = pygame.Rect(0, 0, 0, 0)       # 默认矩形
 
 DEFAULTFONT = pygame.freetype.Font(None)    # 默认字体
 DEFAULTFONT.origin = True
+DEFAULTFONT.kerning = True
+
+DEFAULTTEXTSTYLE: fantas.TextStyle = None    # 默认文本样式，占位符，在 fantas.font 模块中初始化
 
 class Quadrant(IntEnum):
     """
@@ -85,6 +104,13 @@ class FillMode(Enum):
     REPEAT = auto()          # 重复填充模式，对齐 topleft 并重复平铺图片至目标 size
     FITMIN = auto()          # 最小适应填充模式，等比缩放图片，确保图片完整显示在目标 rect 内（可能留有空白）
     FITMAX = auto()          # 最大适应填充模式，等比缩放图片，确保图片覆盖整个目标 rect（超出部分将被裁剪）
+
+class AlignMode(Enum):
+    """ 文本对齐模式枚举。 """
+    LEFT      = auto()    # 左对齐
+    CENTER    = auto()    # 居中对齐
+    RIGHT     = auto()    # 右对齐
+    LEFTRIGHT = auto()    # 左右对齐（两端对齐）
 
 class EventCategory(Enum):
     """ 事件分类枚举。 """

@@ -192,10 +192,8 @@ class Window(PygameWindow):
         Args:
             output (str): 从调试窗口接收到的输出信息字符串。
         """
-        # if output == "started":
-            # self.focus()
         print(f"[Debug Output] {output}")
-    
+
     def debug_send_mouse_surface(self, event: fantas.Event):
         """
         发送当前鼠标所在位置的 Surface 截图到调试窗口。
@@ -206,6 +204,9 @@ class Window(PygameWindow):
         t = fantas.get_time_ns()
         from base64 import b64encode
         size = 32
+        pos = list(event.pos)
+        pos[0] = max(0, min(self.size[0] - 1, pos[0]))
+        pos[1] = max(0, min(self.size[1] - 1, pos[1]))
         rect = fantas.IntRect(event.pos[0] - size // 2, event.pos[1] - size // 2, size, size)
         if rect.left < 0:
             rect.left = 0
@@ -217,5 +218,5 @@ class Window(PygameWindow):
             rect.bottom = self.size[1]
         surface_str = b64encode(self.screen.subsurface(rect).convert_alpha().get_buffer().raw).decode('utf-8')
         # 发送到调试窗口
-        fantas.Debug.send_debug_command(f"{str(event.pos[0] - rect.left).rjust(2, '0')}{str(event.pos[1] - rect.top).rjust(2, '0')}{surface_str}", "MouseSurface")
+        fantas.Debug.send_debug_command(f"{str(pos[0] - rect.left).rjust(2, '0')}{str(pos[1] - rect.top).rjust(2, '0')}{surface_str}", "MouseSurface")
         self.debug_time += fantas.get_time_ns() - t

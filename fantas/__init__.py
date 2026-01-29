@@ -49,11 +49,22 @@ def generate_unique_id() -> int:
 # 高精度时间获取函数
 from time import perf_counter_ns as get_time_ns
 
+# 类型装饰器以支持类型注解的 lru_cache
+from functools import lru_cache, wraps
+def lru_cache_typed(maxsize=128, typed=False):
+    def decorator(func):
+        @wraps(func)  # 用typing.wraps保留类型签名
+        @lru_cache(maxsize=maxsize, typed=typed)
+        def wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
 # 初始化 Pygame
-import pygame
-import pygame.freetype as freetype
+import pygame as pygame
+import pygame.freetype
 pygame.init()
-freetype.init()
+pygame.freetype.init(cache_size=1024)
 
 # 导入 Pygame 的子模块以简化调用链
 import pygame.time      as time
@@ -66,6 +77,7 @@ import pygame.transform as transform
 from fantas.constants     import *    # 常量定义
 from fantas.window        import *    # 窗口管理
 from fantas.debug         import *    # 调试功能
+from fantas.font          import *    # 字体支持
 from fantas.renderer      import *    # 渲染支持
 from fantas.event_handler import *    # 事件处理
 from fantas.nodebase      import *    # 节点基类

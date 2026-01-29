@@ -119,27 +119,45 @@ ColorBackGrundFillCommand(
 - **creator (fantas.UI)**: 创建此渲染命令的 UI 元素。
 - **color (fantas.ColorLike)**: 用于填充的颜色。
 
-## fantas.ColorTextLineRenderCommand
+## fantas.TextLineRenderCommand
 
 纯色单行文本绘制命令。
 
 ``` python
-ColorTextLineRenderCommand(
-    creator  : fantas.UI
-    text     : str                     = 'text'
-    font     : fantas.Font             = fantas.DEFAULTFONT
-    size     : float                   = 16.0
-    fgcolor  : fantas.ColorLike | None = 'black'
-    origin   : fantas.Point            = (0, 0)
-) -> ColorTextLineRenderCommand
+TextLineRenderCommand(
+    creator: fantas.UI
+    text   : str              = 'text'
+    style  : fantas.TextStyle = fantas.DEFAULTTEXTSTYLE
+    origin : fantas.Point     = (0, 0)
+) -> TextLineRenderCommand
 ```
 
 - **creator (fantas.UI)**: 创建此渲染命令的 UI 元素
 - **text (str)**: 文本内容
-- **font (fantas.Font)**: 字体对象
-- **size (float)**: 字体大小
-- **fgcolor (fantas.ColorLike | None)**: 文字颜色
+- **style (fantas.TextStyle)**: 文本样式
 - **origin (fantas.Point)**: 渲染原点
+
+## fantas.TextRenderCommand
+
+多行文本绘制命令。
+
+``` python
+TextRenderCommand(
+    creator     : fantas.UI
+    text        : str              = 'text'
+    style       : fantas.TextStyle = fantas.DEFAULTTEXTSTYLE
+    line_spacing: float            = 4.0
+    rect        : fantas.RectLike  = fantas.Rect(0, 0, 100, 0)
+    align_mode  : fantas.AlignMode = fantas.AlignMode.LEFT
+) -> TextRenderCommand
+```
+
+- **creator (fantas.UI)**: 创建此渲染命令的 UI 元素
+- **text (str)**: 文本内容
+- **style (fantas.TextStyle)**: 文本样式
+- **line_spacing (float)**: 行间距
+- **rect (fantas.RectLike)**: 渲染区域
+- **align_mode (fantas.AlignMode)**: 对齐模式
 
 ## fantas.QuarterCircleRenderCommand
 

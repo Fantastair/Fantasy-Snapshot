@@ -51,7 +51,7 @@ lpf_map = {
 }
 
 # 中文字体支持
-chinese_font = fantas.freetype.SysFont(("SimHei", "Microsoft YaHei", "Maple Mono Normal NF CN"), 16)
+chinese_font = fantas.SysFont(("SimHei", "Microsoft YaHei", "Maple Mono Normal NF CN"), 16)
 chinese_font.origin = True
 
 class RatioBar:
@@ -127,6 +127,13 @@ class LegendBox:
     """
     图例框类，用于显示时间占比图例。
     """
+
+    text_style = fantas.TextStyle(
+        size=20,
+        fgcolor=fantas.Color("#e3e3e3"),
+        font=chinese_font,
+    )
+    
     def __init__(self, parent_ui: fantas.UI):
         self.legend_box = fantas.Label(
             bgcolor=fantas.Color("#303030"),
@@ -156,18 +163,14 @@ class LegendBox:
             self.legend_box.append(color_box)
             desc_text = fantas.TextLine(
                 text=desc,
-                size=20,
-                fgcolor=fantas.Color("#e3e3e3"),
+                style=LegendBox.text_style,
                 origin=(38, 24 + i*26),
-                font=chinese_font,
             )
             self.legend_box.append(desc_text)
             time_text = fantas.TextLine(
                 text="0 ms",
-                size=20,
-                fgcolor=fantas.Color("#e3e3e3"),
+                style=LegendBox.text_style,
                 origin=(140, 24 + i*26),
-                font=chinese_font,
             )
             self.legend_box.append(time_text)
             self.time_texts[name] = time_text
@@ -176,6 +179,12 @@ class FrameTimer:
     """
     帧计时器类，用于显示帧率及时间占比。
     """
+
+    fps_text_style = fantas.TextStyle(
+        size=24,
+        fgcolor=fantas.Color("#e3e3e3"),
+    )
+    
     def __init__(self, width: int, height: int, parent_ui: fantas.UI):
         # 显示框
         self.box = fantas.Label(
@@ -190,8 +199,7 @@ class FrameTimer:
         # 帧率文本
         self.fps_text = fantas.TextLine(
             text="FPS: 0.0",
-            size=24.0,
-            fgcolor=fantas.Color("#e3e3e3"),
+            style=FrameTimer.fps_text_style,
             origin=(8, 29),
         )
         self.box.append(self.fps_text)
@@ -220,6 +228,13 @@ class EventLogBox:
     """
     事件日志框类，用于显示事件日志信息。
     """
+
+    text_style = fantas.TextStyle(
+        size=20,
+        fgcolor=fantas.Color("#e3e3e3"),
+        font=chinese_font,
+    )
+
     def __init__(self, width: int, height: int, parent_ui: fantas.UI):
         self.box = fantas.Label(
             bgcolor=fantas.Color("#303030"),
@@ -230,22 +245,11 @@ class EventLogBox:
             box_mode=fantas.BoxMode.OUTSIDE,
         )
         parent_ui.append(self.box)
-        self.line_height = 24
-        self.max_lines = round(height / self.line_height - 1)
-        self.lines: deque[str] = deque(['']*self.max_lines, maxlen=self.max_lines)
-        self.text_lines: list[fantas.TextLine] = []
-        for i in range(self.max_lines):
-            text_line = fantas.TextLine(
-                text="",
-                size=self.line_height - 4,
-                fgcolor=fantas.Color("#e3e3e3"),
-                origin=(8, (self.line_height - height % self.line_height) / 2 + i*self.line_height + 24),
-                font=chinese_font,
-            )
-            self.box.append(text_line)
-            self.text_lines.append(text_line)
-        text_line.fgcolor = fantas.Color("#c5e73c")
-        self.log_event("事件日志：")
+        self.lines: deque[str] = deque(['']*5, maxlen=5)
+        self.text = fantas.Text(style=EventLogBox.text_style, rect=self.box.rect.inflate(-20, 0), line_spacing=0)
+        self.text.rect.top += 2
+        self.text.rect.height = 0
+        self.box.append(self.text)
 
     def log_event(self, event_str: str):
         """
@@ -254,8 +258,7 @@ class EventLogBox:
             event_str (str): 事件信息字符串。
         """
         self.lines.append(event_str)
-        for i, line in enumerate(self.lines):
-            self.text_lines[i].text = line
+        self.text.text = '\n'.join(self.lines)
 
 class MouseSurface:
     def __init__(self, parent_ui: fantas.UI):
@@ -288,9 +291,11 @@ class MouseSurface:
             surface_bytes (str): 编码后的 Surface 字节数据字符串。
         """
         self.surface_label.surface.get_buffer().write(b64decode(surface_bytes[4:]))
-        self.cursor.rect.left = int(surface_bytes[0:2]) * 4
-        self.cursor.rect.top = int(surface_bytes[2:4]) * 4
-        self.cursor.fgcolor = fantas.Color(255, 255, 255) - self.surface_label.surface.get_at((16, 16))
+        x = int(surface_bytes[0:2])
+        y = int(surface_bytes[2:4])
+        self.cursor.rect.left = x * 4
+        self.cursor.rect.top  = y * 4
+        self.cursor.fgcolor = fantas.Color(255, 255, 255) - self.surface_label.surface.get_at((x, y))
 
 class DebugWindow(fantas.Window):
     """
@@ -370,5 +375,6 @@ debugwindow_config = fantas.WindowConfig(
     input_focus=False,
 )
 debug_window = DebugWindow(debugwindow_config)
+debug_window.opacity = float(sys.argv[6])
 
 debug_window.mainloop()

@@ -14,13 +14,20 @@ fantas 中定义了许多有意义的常量，如果你实在不想在访问这�
   返回 fantas 包的安装路径字符串。
 
 - fantas.generate_unique_id()
-    生成一个全局唯一的整数 ID。
-    `generate_unique_id() -> int`
-    返回一个全局唯一的整数 ID，每次调用都会返回一个新的 ID。
-    id 没有任何特殊的格式，纯粹是一个递增的整数。
+  生成一个全局唯一的整数 ID。
+  `generate_unique_id() -> int`
+  返回一个全局唯一的整数 ID，每次调用都会返回一个新的 ID。
+  id 没有任何特殊的格式，纯粹是一个递增的整数。
 
 - fantas.get_time_ns()
-    获取当前的高精度时间戳，单位为纳秒。
-    `get_time_ns() -> int`
-    返回一个纳秒级整数时间戳。
-    具体时间取决于操作系统，应该通过计算时间差来得到经过的相对时间。
+  获取当前的高精度时间戳，单位为纳秒。
+  `get_time_ns() -> int`
+  返回一个纳秒级整数时间戳。
+  具体时间取决于操作系统，应该通过计算时间差来得到经过的相对时间。
+
+- fantas.lur_cache_typed()
+  装饰器生成函数，用于创建一个带类型检查的 LRU 缓存。
+  `lur_cache_typed(maxsize: int = 128, typed: bool = False) -> Callable`
+  返回一个装饰器函数，该装饰器函数可以应用于其他函数以启用 LRU 缓存功能。
+  参数 `maxsize` 指定缓存的最大容量，默认值为 128。
+  参数 `typed` 指定是否将不同类型的参数视为不同的缓存条目，默认值为 False。  

@@ -105,9 +105,7 @@ SurfaceLabel(
 ``` python
 TextLine(
     text    : str                = 'text'
-    font    : fantas.Font        = fantas.DEFAULTFONT
-    fgcolor : fantas.ColorLike   = 'black'
-    size    : float              = 16.0
+    style   : fantas.TextStyle   = fantas.DEFAULTTEXTSTYLE
     origin  : fantas.Point       = (0, 0)
 ) -> fantas.TextLine
 ```
@@ -118,8 +116,32 @@ TextLine(
 - **children (None)**: 该类不允许有子元素。
 - **ui_id (fantas.UIID)**: 唯一标识 ID。
 - **text (str)**: 显示的文本内容。
-- **font (fantas.Font)**: 字体。
-- **fgcolor (fantas.ColorLike)**: 文本颜色。
-- **size (float)**: 字体大小。
+- **style (fantas.TextStyle)**: 文本样式。
 - **origin (fantas.Point)**: 定位原点。
 - **command (fantas.TextLineRenderCommand)**: 用于绘制文本的渲染命令。
+
+## fantas.Text
+
+多行文本 UI 类。
+
+``` python
+Text(
+    text    : str                = 'text'
+    style   : fantas.TextStyle   = fantas.DEFAULTTEXTSTYLE
+    line_spacing: float          = 4.0
+    rect    : fantas.RectLike    = fantas.Rect(0, 0, 100, 0)
+    align_mode: fantas.AlignMode = fantas.AlignMode.LEFT
+) -> fantas.Text
+```
+
+### 属性
+
+- **father (UI | None)**: 指向父显示元素。
+- **children (None)**: 该类不允许有子元素。
+- **ui_id (fantas.UIID)**: 唯一标识 ID。
+- **text (str)**: 显示的文本内容。
+- **style (fantas.TextStyle)**: 文本样式。
+- **line_spacing (float)**: 行间距。
+- **rect (fantas.RectLike)**: 文本显示区域。
+- **align_mode (fantas.AlignMode)**: 对齐模式。
+- **command (fantas.TextRenderCommand)**: 渲染命令。

@@ -15,6 +15,10 @@ class TestSlider:
     """
     测试滑块组件。
     """
+
+    name_text_style  = fantas.TextStyle(size=32)
+    value_text_style = fantas.TextStyle(size=24)
+
     def __init__(self, name: str, topleft: tuple[int, int], start: float, end: float, init_value: float, set_func):
         self.start = start
         self.end = end
@@ -22,8 +26,8 @@ class TestSlider:
         self.set_func = set_func
         self.name_text = fantas.TextLine(
             text=name,
-            size=32,
-            rect=fantas.Rect(topleft, (0, 0)),
+            style=TestSlider.name_text_style,
+            origin=(topleft[0], topleft[1] + TestSlider.name_text_style.font.get_sized_ascender(TestSlider.name_text_style.size))
         )
         background.append(self.name_text)
         self.slider_bar = fantas.Label(
@@ -51,8 +55,8 @@ class TestSlider:
         self.slider_bar.append(self.slider)
         self.value_text = fantas.TextLine(
             text="",
-            size=24,
-            rect=fantas.Rect(topleft[0] + 560, topleft[1] + 4, 0, 0),
+            style=TestSlider.value_text_style,
+            origin=(topleft[0] + 560, topleft[1] + TestSlider.value_text_style.font.get_sized_ascender(TestSlider.value_text_style.size)),
         )
         background.append(self.value_text)
         window.add_event_listener(fantas.MOUSEENTERED, self.slider, False, self.mouse_enter_slider)
@@ -111,31 +115,54 @@ class TestSlider:
 # radius_slider = TestSlider("radius", (10, 10 + 40 * 4), 0.0, 400.0,          test_label.border_radius, lambda v: setattr(test_label, 'border_radius', v))
 # bw_slider     = TestSlider("bw",     (10, 10 + 40 * 5), 0.0, 10.0,           test_label.border_width,  lambda v: setattr(test_label, 'border_width', int(v)))
 
-l = fantas.Label(
-    bgcolor=None,
-    fgcolor='black',
-    rect=fantas.Rect(600, 500, 600, 64),
-    box_mode=fantas.BoxMode.OUTSIDE,
-    border_width=10,
-)
-background.append(l)
-
-chinese_font = fantas.freetype.SysFont("Maple Mono Normal NF CN", 16)
+chinese_font: fantas.Font = fantas.SysFont("Maple Mono Normal NF CN", 16)
 chinese_font.origin = True
+chinese_font.kerning = True
 
 test_text = fantas.TextLine(
     text="Fantas3 Test",
-    size=64,
-    origin=(window.size[0] / 2, window.size[1] / 2)
+    style=fantas.TextStyle(size=64),
+    origin=(window.size[0] / 2 - 600, window.size[1] / 2)
 )
 background.append(test_text)
+
 test_text = fantas.TextLine(
     text="Fantas3 测试",
-    size=64,
-    font=chinese_font,
-    origin=(window.size[0] / 2 + 200, window.size[1] / 2)
+    style=fantas.TextStyle(size=64, font=chinese_font),
+    origin=(window.size[0] / 2 + 500, window.size[1] / 2)
 )
 background.append(test_text)
+
+test_label = fantas.Label(
+    bgcolor=None,
+    fgcolor=fantas.Color("#000000"),
+    rect=fantas.Rect(test_text.origin[0], test_text.origin[1] - chinese_font.get_sized_ascender(64), 64, chinese_font.get_sized_height(64)),
+    border_width=1,
+    box_mode=fantas.BoxMode.OUTSIDE,
+)
+background.append(test_label)
+
+r = fantas.Rect(100, 100, 200, 340)
+
+test_text = fantas.Text(
+    "Fantas3 多行文本测试\n这是第二行文本\n这是第三行文本\n这是第四行文本\n这是第五行文本\n这是第六行文本\n这是第七行文本",
+    style=fantas.TextStyle(font=chinese_font, size=32),
+    rect=r,
+    align_mode=fantas.AlignMode.LEFTRIGHT,
+)
+background.append(test_text)
+
+TestSlider("width",  (10, 10 + 40 * 0), 0.0, 800.0, r.width,  lambda v: setattr(r, 'width', v))
+
+background.append(
+    fantas.Label(
+        bgcolor=None,
+        fgcolor=fantas.Color("#000000"),
+        rect=r,
+        border_width=1,
+        box_mode=fantas.BoxMode.OUTSIDE,
+    )
+)
 
 # 运行主循环
 # window.mainloop()

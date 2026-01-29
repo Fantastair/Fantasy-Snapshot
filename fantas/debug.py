@@ -14,16 +14,17 @@ class Debug:
     queue: Queue = Queue()                     # 调试子进程返回队列
 
     @staticmethod
-    def open_debug_window(window: fantas.Window, left: int = 0, top: int = 0, width: int = 1280, height: int = 720, close_with_main: bool = True):
+    def open_debug_window(window: fantas.Window, left: int = 0, top: int = 0, width: int = 1280, height: int = 720, close_with_main: bool = True, opacity: float = 1.0):
         """
         启动调试窗口子进程。
         Args:
-            window (fantas.Window): 主窗口对象。
-            left            (int) : 窗口左上角的 X 坐标位置。
-            top             (int) : 窗口左上角的 Y 坐标位置。
-            width           (int) : 窗口宽度（像素）。
-            height          (int) : 窗口高度（像素）。
-            close_with_main (bool): 主进程关闭时是否关闭调试窗口子进程。
+            window          (fantas.Window): 主窗口对象。
+            left            (int)          : 窗口左上角的 X 坐标位置。
+            top             (int)          : 窗口左上角的 Y 坐标位置。
+            width           (int)          : 窗口宽度（像素）。
+            height          (int)          : 窗口高度（像素）。
+            close_with_main (bool)         : 主进程关闭时是否关闭调试窗口子进程。
+            opacity         (float)        : 窗口不透明度，范围 0.0 - 1.0。
         """
         # 先关闭已有的调试窗口
         Debug.close_debug_window()
@@ -40,7 +41,7 @@ class Debug:
         ])
         # 使用同一个 Python 解释器，构建命令行参数
         import sys
-        cmd = [sys.executable, str(fantas.package_path() / "debug_window.py"), window.title, str(left), str(top), str(width), str(height)]
+        cmd = [sys.executable, str(fantas.package_path() / "debug_window.py"), window.title, str(left), str(top), str(width), str(height), str(opacity)]
 
         try:
             Debug.process = subprocess.Popen(

@@ -11,6 +11,9 @@
 - **DEFAULTFONT**
   默认字体，这是一个自动加载的英文字体。
 
+- **DEFAULTTEXTSTYLE**
+  默认文本样式对象。
+
 - **Quadrant**
   象限枚举。
   低 2 位用于快速符号计算，高 4 位作为单比特掩码。
@@ -31,6 +34,9 @@
 
 - **FillMode**
   Surface 填充模式枚举。
+
+- **AlignMode**
+  文本对齐模式枚举。
 
   - `fantas.FillMode.IGNORE`: 忽略填充模式，只对齐 topleft，不关心 size。
   - `fantas.FillMode.SCALE`: 缩放填充模式，对齐 topleft 并缩放图片至目标 size。

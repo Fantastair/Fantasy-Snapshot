@@ -1,0 +1,123 @@
+from __future__ import annotations
+import copy
+from dataclasses import dataclass, field
+
+import pygame.freetype
+from pygame.sysfont import SysFont as _SysFont
+
+import fantas
+
+__all__ = (
+    "Font",
+    "SysFont",
+    "get_font_by_id",
+    "TextStyle",
+    "DEFAULTTEXTSTYLE",
+)
+
+class Font(pygame.freetype.Font):
+    """ Fantas3 字体类，继承自 pygame.freetype.Font，添加唯一 ID 属性，并支持通过 ID 查找字体实例。 """
+    def __init__(self, file: fantas.FileLike | None, size: float = 0, font_index: int = 0, resolution: int = 0, ucs4: int = False):
+        """
+        初始化 Font 实例。
+        Args:
+            file (fantas.FileLike | None): 字体文件路径或文件对象，或 None 表示使用默认字体。
+            size (float): 字体大小，默认为 0。
+            font_index (int): 字体索引，默认为 0。
+            resolution (int): 分辨率，默认为 0。
+            ucs4 (int): 是否使用 UCS4 编码，默认为 False。
+        """
+        super().__init__(file, size, font_index, resolution, ucs4)
+        self.FANTASID: int = fantas.generate_unique_id()
+        font_dict[self.FANTASID] = self
+
+    def __del__(self):
+        if self.FANTASID in font_dict:
+            del font_dict[self.FANTASID]
+
+    def __hash__(self):
+        return hash(self.FANTASID)
+
+    def __eq__(self, other):
+        return isinstance(other, Font) and self.FANTASID == other.FANTASID
+
+    get_rect = fantas.lru_cache_typed(maxsize=2048, typed=True)(pygame.freetype.Font.get_rect)
+
+    @fantas.lru_cache_typed(maxsize=2048, typed=True)
+    def _get_width_char_kerning(self, style_flag: fantas.TextStyleFlag, size: float, char_pair: str) -> int:
+        """
+        获取字距调整后的字符宽度。
+        Args:
+            style_flag (fantas.TextStyleFlag): 字体样式标志。
+            size       (float)               : 字体大小。
+            char_pair  (str)                 : 字符对，包含目标字符和前一个字符。
+        Returns:
+            int: 字符宽度（像素）。
+        """
+        return self.get_rect(char_pair, style_flag, size=size).width - self.get_rect(char_pair[0], style_flag, size=size).width
+
+    @fantas.lru_cache_typed(maxsize=256, typed=True)
+    def get_widthes(self, style_flag: fantas.TextStyleFlag, size: float, text: str) -> tuple[int]:
+        """
+        获取指定样式文本的宽度度量信息。
+        Args:
+            style_flag (fantas.TextStyleFlag): 字体样式标志。
+            size       (float)               : 字体大小。
+            text       (str)                 : 要测量的文本内容。
+        Returns:
+            tuple[int]: 字体度量信息列表，每一个元素对应文本中字符的右侧坐标（从 0 开始）。
+        """
+        # 初始化度量信息列表
+        widthes = [self.get_rect(text[0], style_flag, size=size).width]
+        # 简化引用
+        append = widthes.append
+        # 逐字计算度量信息
+        for i in range(0, len(text) - 1):
+            append(self._get_width_char_kerning(style_flag, size, text[i:i+2]) + widthes[-1])
+        # 返回度量信息元组（节省缓存空间，并防篡改）
+        return tuple(widthes)
+
+pygame.freetype.Font = Font
+
+def SysFont(name, size=16) -> Font:
+    """
+    创建并返回一个系统字体的 Font 实例。
+    Args:
+        name (str): 字体名称。
+        size (int): 字体大小，默认为 16。
+    Returns:
+        Font: 创建的字体实例。
+    """
+    return _SysFont(name, size, constructor=constructor)
+
+def constructor(fontpath, size, bold, italic):
+    font = Font(fontpath, size)
+    font.strong = bold
+    font.oblique = italic
+    return font
+
+font_dict: dict[int, Font] = {}
+
+def get_font_by_id(font_id: int) -> Font | None:
+    """
+    通过字体 ID 获取字体实例。
+    Args:
+        font_id (int): 字体的唯一 ID。
+    Returns:
+        Font | None: 对应 ID 的字体实例，如果不存在则返回 None。
+    """
+    return font_dict.get(font_id, None)
+
+@dataclass(slots=True)
+class TextStyle:
+    """ 文本样式类 """
+    font : fantas.Font                  = fantas.DEFAULTFONT              # 字体
+    size : float                        = 16.0                            # 字体大小
+    fgcolor : fantas.ColorLike          = 'black'                         # 文本颜色
+    style_flag : fantas.TextStyleFlag   = fantas.TEXTSTYLEFLAG_DEFAULT    # 文本风格标志
+
+    def copy(self) -> TextStyle:
+        """ 创建并返回当前 TextStyle 实例的副本 """
+        return copy.copy(self)
+
+DEFAULTTEXTSTYLE = TextStyle()    # 默认文本样式

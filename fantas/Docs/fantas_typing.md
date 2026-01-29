@@ -35,6 +35,9 @@
 
   - `(x, y)` 或 `[x, y]`
 
+- **fantas.FileLike**
+  表示文件的对象，如字符串路径、字节流或任何具有类似文件行为。
+
 - **fantas.EventType**
   事件类型。
   实际上是一个 `int` 对象，表示事件的类型代码，为了便于观察，可以使用 fantas 定义的常量，比如 `fantas.QUIT`。
@@ -55,3 +58,7 @@
   象限掩码类型。
   `e.g. fantas.Quadrant.TOPLEFT | fantas.Quadrant.BOTTOMRIGHT`
   是 fantas.Quadrant 通过或运算得到的值，用于表示多个象限的组合。
+
+- **fantas.TextStyleFlag**
+  文本风格标志类型。
+  `e.g. fantas.TEXTSTYLEFLAG_STRONG | fantas.TEXTSTYLEFLAG_OBLIQUE`

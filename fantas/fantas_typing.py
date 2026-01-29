@@ -3,17 +3,17 @@ import pygame
 
 __all__ = (
     "Surface",
-    "Font",
     "RectLike", "Rect", "IntRect",
     "ColorLike", "Color",
     "Point", "IntPoint",
+    "FileLike",
     "Event", "EventType",
     "UIID", "ListenerKey", "ListenerFunc",
     "QuadrantMask",
+    "TextStyleFlag",
 )
 
 from pygame import Surface          # 表面类
-from pygame.freetype import Font    # 字体类
 
 RectLike:  TypeAlias = pygame.typing.RectLike        # 矩形类型
 from pygame import FRect as Rect, Rect as IntRect    # 矩形类
@@ -24,6 +24,8 @@ from pygame import Color                          # 颜色类
 Point:     TypeAlias = pygame.typing.Point       # 点类
 IntPoint:  TypeAlias = pygame.typing.IntPoint    # 整数点类
 
+FileLike: TypeAlias = pygame.typing.FileLike    # 文件类
+
 from pygame.event import Event    # 事件类
 EventType: TypeAlias = int        # 事件类型
 
@@ -32,3 +34,5 @@ ListenerKey : TypeAlias = tuple[EventType, UIID, bool]    # 监听器键类型
 ListenerFunc: TypeAlias = Callable[[Event], bool]         # 监听器函数类型
 
 QuadrantMask: TypeAlias = int    # 象限掩码类型，是 fantas.Quadrant 通过或运算得到的值
+
+TextStyleFlag: TypeAlias = int    # 文本风格标志类型，加粗、斜体等，TEXTSTYLEFLAG_* 常量或它们的 或运算 结果
