@@ -108,17 +108,6 @@ class TestSlider:
             self.set_func(self.value)
         return False
 
-# top_slider    = TestSlider("top",    (10, 10 + 40 * 1), 0.0, window.size[1], test_label.rect.top,      lambda v: setattr(test_label.rect, 'top', v))
-# left_slider   = TestSlider("left",   (10, 10 + 40 * 0), 0.0, window.size[0], test_label.rect.left,     lambda v: setattr(test_label.rect, 'left', v))
-# width_slider  = TestSlider("width",  (10, 10 + 40 * 2), 0.0, window.size[0], test_label.rect.width,    lambda v: setattr(test_label.rect, 'width', v))
-# height_slider = TestSlider("height", (10, 10 + 40 * 3), 0.0, window.size[1], test_label.rect.height,   lambda v: setattr(test_label.rect, 'height', v))
-# radius_slider = TestSlider("radius", (10, 10 + 40 * 4), 0.0, 400.0,          test_label.border_radius, lambda v: setattr(test_label, 'border_radius', v))
-# bw_slider     = TestSlider("bw",     (10, 10 + 40 * 5), 0.0, 10.0,           test_label.border_width,  lambda v: setattr(test_label, 'border_width', int(v)))
-
-chinese_font: fantas.Font = fantas.SysFont("Maple Mono Normal NF CN", 16)
-chinese_font.origin = True
-chinese_font.kerning = True
-
 test_text = fantas.TextLine(
     text="Fantas3 Test",
     style=fantas.TextStyle(size=64),
@@ -128,7 +117,7 @@ background.append(test_text)
 
 test_text = fantas.TextLine(
     text="Fantas3 测试",
-    style=fantas.TextStyle(size=64, font=chinese_font),
+    style=fantas.TextStyle(size=64, font=fantas.fonts.DEFAULTSYSFONT),
     origin=(window.size[0] / 2 + 500, window.size[1] / 2)
 )
 background.append(test_text)
@@ -136,7 +125,7 @@ background.append(test_text)
 test_label = fantas.Label(
     bgcolor=None,
     fgcolor=fantas.Color("#000000"),
-    rect=fantas.Rect(test_text.origin[0], test_text.origin[1] - chinese_font.get_sized_ascender(64), 64, chinese_font.get_sized_height(64)),
+    rect=fantas.Rect(test_text.origin[0], test_text.origin[1] - fantas.fonts.DEFAULTSYSFONT.get_sized_ascender(64), 64, fantas.fonts.DEFAULTSYSFONT.get_sized_height(64)),
     border_width=1,
     box_mode=fantas.BoxMode.OUTSIDE,
 )
@@ -146,7 +135,7 @@ r = fantas.Rect(100, 100, 200, 340)
 
 test_text = fantas.Text(
     "Fantas3 多行文本测试\n这是第二行文本\n这是第三行文本\n这是第四行文本\n这是第五行文本\n这是第六行文本\n这是第七行文本",
-    style=fantas.TextStyle(font=chinese_font, size=32),
+    style=fantas.TextStyle(font=fantas.fonts.DEFAULTSYSFONT, size=32),
     rect=r,
     align_mode=fantas.AlignMode.LEFTRIGHT,
 )

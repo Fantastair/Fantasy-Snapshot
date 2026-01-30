@@ -110,11 +110,6 @@ class Window(PygameWindow):
         """
         以调试模式进入窗口的主事件循环，直到窗口关闭。
         """
-        # === 调试 ===
-        if not fantas.Debug.is_debuging():
-            raise RuntimeError("调试窗口未打开，无法进入调试主循环。")
-        # === 调试 ===
-
         # 简化引用
         clock = self.clock
         event_handler = self.event_handler
@@ -132,9 +127,7 @@ class Window(PygameWindow):
 
         # === 调试 ===
         # 监听调试输出事件
-        self.add_event_listener(fantas.DEBUGRECEIVED, root_ui, True, self.read_debug_output)
-        # 开启调试输出事件定时器
-        fantas.time.set_timer(fantas.Event(fantas.DEBUGRECEIVED), 100)
+        self.add_event_listener(fantas.DEBUGRECEIVED, root_ui, True, self.handle_debug_received_event)
         # 监听鼠标移动事件
         if MOUSEMAGNIFY in fantas.Debug.debug_flag:
             self.add_event_listener(fantas.MOUSEMOTION, root_ui, True, self.debug_send_mouse_surface)
@@ -158,7 +151,7 @@ class Window(PygameWindow):
                 # 发送事件信息到调试窗口
                 debug_timer.record("Event")
                 if fantas.DebugFlag.EVENTLOG in fantas.Debug.debug_flag and event.type != fantas.DEBUGRECEIVED:
-                    fantas.Debug.send_debug_command(str(event), "EventLog")
+                    fantas.Debug.send_debug_data(str(event), prompt="EventLog")
                 debug_timer.record("Debug")
                 # === 调试 ===
 
@@ -184,18 +177,14 @@ class Window(PygameWindow):
             debug_timer.record("Render")
             # 发送计时记录到调试窗口
             if fantas.DebugFlag.TIMERECORD in fantas.Debug.debug_flag:
-                fantas.Debug.send_debug_command(debug_timer.get_records(), "TimeRecord")
+                fantas.Debug.send_debug_data(debug_timer.time_records, prompt="TimeRecord")
             # 清空计时记录
             debug_timer.clear()
             # === 调试 ===
-        # === 调试 ===
-        # 关闭调试输出事件定时器
-        fantas.time.set_timer(fantas.Event(fantas.DEBUGRECEIVED), 0)
-        # === 调试 ===
 
         self.destroy()
 
-    def read_debug_output(self, event: fantas.Event):
+    def handle_debug_received_event(self, event: fantas.Event):
         """
         处理从调试窗口接收到输出信息的事件。
         Args:
@@ -203,17 +192,9 @@ class Window(PygameWindow):
         """
         self.debug_timer.record("Event")
         while not fantas.Debug.queue.empty():
-            output = fantas.Debug.queue.get()
-            self.handle_debug_output(output)
+            data = fantas.Debug.queue.get()
+            print(f"[{data[0]}] {data[1:]}")
         self.debug_timer.record("Debug")
-
-    def handle_debug_output(self, output: str):
-        """
-        处理从调试窗口接收到的输出信息。
-        Args:
-            output (str): 从调试窗口接收到的输出信息字符串。
-        """
-        print(f"[Debug Output] {output}")
 
     def debug_send_mouse_surface(self, event: fantas.Event):
         """
@@ -223,7 +204,6 @@ class Window(PygameWindow):
         """
         # 获取鼠标位置附近的 Surface 截图
         self.debug_timer.record("Event")
-        from base64 import b64encode
         size = 32
         pos = list(event.pos)
         pos[0] = max(0, min(self.size[0] - 1, pos[0]))
@@ -237,9 +217,8 @@ class Window(PygameWindow):
             rect.right = self.size[0]
         if rect.bottom > self.size[1]:
             rect.bottom = self.size[1]
-        surface_str = b64encode(self.screen.subsurface(rect).convert_alpha().get_buffer().raw).decode('utf-8')
         # 发送到调试窗口
-        fantas.Debug.send_debug_command(f"{str(pos[0] - rect.left).rjust(2, '0')}{str(pos[1] - rect.top).rjust(2, '0')}{surface_str}", "MouseMagnify")
+        fantas.Debug.send_debug_data(pos[0] - rect.left, pos[1] - rect.top, self.screen.subsurface(rect).convert_alpha().get_buffer().raw, prompt="MouseMagnify")
         self.debug_timer.record("Debug")
 
 class MultiWindow:
@@ -295,6 +274,26 @@ class MultiWindow:
         self.pop(window).destroy()
         if not self.windows:
             self.running = False
+    
+    def auto_place_windows(self, padding=0):
+        """
+        自动布局所有管理的窗口，尽量减少重叠面积。
+        Args:
+            padding (int, optional): 窗口之间的间距，默认为 0 像素。
+        """
+        screen_size = fantas.display.get_desktop_sizes()[0]
+
+        left = padding
+        top = padding
+        bottom = top
+
+        for window in self.windows.values():
+            if window.size[0] + left + padding * 2 > screen_size[0]:
+                left = padding
+                top = bottom
+            window.position = (left + padding, top + padding)
+            left += window.size[0] + padding
+            bottom = max(bottom, top + window.size[1] + padding)
 
     def mainloops(self):
         """
@@ -342,8 +341,6 @@ class MultiWindow:
         以调试模式进入所有管理窗口的主事件循环，直到所有窗口关闭。
         """
         # === 调试 ===
-        if not fantas.Debug.is_debuging():
-            raise RuntimeError("调试窗口未打开，无法进入调试主循环。")
         # 创建调试计时器
         debug_timer = DebugTimer()
         # === 调试 ===
@@ -369,8 +366,6 @@ class MultiWindow:
             window.add_event_listener(fantas.MOUSEMOTION, window.root_ui, True, window.debug_send_mouse_surface)
             # === 调试 ===
         # === 调试 ===
-        # 开启调试输出事件定时器
-        fantas.time.set_timer(fantas.Event(fantas.DEBUGRECEIVED), 100)
         # 重置调试计时器
         debug_timer.reset()
         # === 调试 ===
@@ -391,7 +386,7 @@ class MultiWindow:
                 # 发送事件信息到调试窗口
                 debug_timer.record("Event")
                 if fantas.DebugFlag.EVENTLOG in fantas.Debug.debug_flag and event.type != fantas.DEBUGRECEIVED:
-                    fantas.Debug.send_debug_command(str(event), "EventLog")
+                    fantas.Debug.send_debug_data(str(event), "EventLog")
                 debug_timer.record("Debug")
                 # === 调试 ===
 
@@ -431,14 +426,10 @@ class MultiWindow:
             # === 调试 ===
             # 发送计时记录到调试窗口
             if fantas.DebugFlag.TIMERECORD in fantas.Debug.debug_flag:
-                fantas.Debug.send_debug_command(debug_timer.get_records(), "TimeRecord")
+                fantas.Debug.send_debug_data(debug_timer.time_records, "TimeRecord")
             # 清空计时记录
             debug_timer.clear()
             # === 调试 ===
-        # === 调试 ===
-        # 关闭调试输出事件定时器
-        fantas.time.set_timer(fantas.Event(fantas.DEBUGRECEIVED), 0)
-        # === 调试 ===
 
 @dataclass(slots=True)
 class DebugTimer:
@@ -471,11 +462,3 @@ class DebugTimer:
         清空所有时间记录，但不更新上一次记录的时间点。
         """
         self.time_records.clear()
-
-    def get_records(self) -> str:
-        """
-        获取当前的时间记录字符串表示。
-        Returns:
-            str: 当前时间记录的字符串表示。
-        """
-        return '\x1f'.join(f"{label}:{time_ns}" for label, time_ns in self.time_records.items())

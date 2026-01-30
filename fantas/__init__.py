@@ -78,7 +78,6 @@ import pygame.transform as transform
 # 导入 fantas 包的各个子模块
 from fantas.constants     import *    # 常量定义
 from fantas.window        import *    # 窗口管理
-from fantas.debug         import *    # 调试功能
 from fantas.font          import *    # 字体支持
 from fantas.renderer      import *    # 渲染支持
 from fantas.event_handler import *    # 事件处理
@@ -90,6 +89,11 @@ from fantas.label_ui      import *    # 标签 UI
 from fantas.text_ui       import *    # 文字 UI
 from fantas.fantas_typing import *    # 类型定义
 from fantas.resource      import *    # 资源管理
+
+# 如果在调试模式下，导入调试和网络支持模块
+if os.environ.get('FANTAS_DEBUG_OFF', '0') != '1':
+    from fantas.udp   import *    # 网络支持
+    from fantas.debug import *    # 调试功能
 
 # 先禁用所有事件，然后再根据需要启用特定事件
 event.set_blocked(None)

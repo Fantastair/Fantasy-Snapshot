@@ -3,12 +3,7 @@
 它定义了用于调试的窗口类，在子进程中运行。
 """
 from __future__ import annotations
-import re
 import sys
-import select
-import threading
-from queue import Queue
-from base64 import b64decode
 from collections import deque
 
 import fantas
@@ -76,7 +71,7 @@ class EventLogWindow(fantas.Window):
             fantas.WindowConfig(
                 title=f"{windows_title} | 事件日志",
                 window_size=(600, 400),
-                window_position=(left_offset, top_offset),
+                window_position=(0, 0),
                 resizable=True,
                 mouse_focus=False,
                 input_focus=False,
@@ -86,10 +81,10 @@ class EventLogWindow(fantas.Window):
         self.background = fantas.ColorBackground(fantas.colors.get("debug_bg"))
         self.root_ui.append(self.background)
 
-        self.text = fantas.Text(style=fantas.DEFAULTTEXTSTYLE, rect=fantas.Rect(10, 0, self.size[0] - 20, self.size[1]), reverse=True)
+        self.text = fantas.Text("", style=fantas.DEFAULTTEXTSTYLE, rect=fantas.Rect(10, 0, self.size[0] - 20, self.size[1]), reverse=True)
         self.background.append(self.text)
 
-        self.lines: deque[str] = deque(maxlen=10)
+        self.lines: deque[str] = deque(maxlen=64)
         self.add_event_listener(fantas.WINDOWRESIZED, self.root_ui, True, self.handle_WINDOWRESIZED_event)
 
     def log_event(self, event_str: str):
@@ -144,7 +139,7 @@ class TimeRecordWindow(fantas.Window):
             fantas.WindowConfig(
                 title=f"{windows_title} | 时间记录",
                 window_size=(TimeRecordWindow.min_width, TimeRecordWindow.fix_height),
-                window_position=(left_offset, top_offset),
+                window_position=(0, 0),
                 resizable=True,
                 mouse_focus=False,
                 input_focus=False,
@@ -164,10 +159,10 @@ class TimeRecordWindow(fantas.Window):
 
         self.legend_text = fantas.Text(
             style=fantas.DEFAULTTEXTSTYLE,
-            line_spacing=1,
-            rect=fantas.Rect(50, 44, 100, 150),
+            rect=fantas.Rect(50, 68-fantas.DEFAULTTEXTSTYLE.font.get_sized_ascender(fantas.DEFAULTTEXTSTYLE.size), 100, 150),
             align_mode=fantas.AlignMode.LEFTRIGHT
         )
+        self.legend_text.line_height = 30
         text = ""
         for i, (key, desc) in enumerate(TimeRecordWindow.time_category.items()):
             legend_color = fantas.colors.get(f"{key}_legend_color")
@@ -186,8 +181,9 @@ class TimeRecordWindow(fantas.Window):
             text='',
             style=fantas.DEFAULTTEXTSTYLE,
             line_spacing=1,
-            rect=fantas.Rect(170, 44, 100, 150),
+            rect=fantas.Rect(170, 68-fantas.DEFAULTTEXTSTYLE.font.get_sized_ascender(fantas.DEFAULTTEXTSTYLE.size), 100, 150),
         )
+        self.time_text.line_height = 30
         self.background.append(self.time_text)
         self.ratios = {key: 0.0 for key in TimeRecordWindow.time_category.keys()}
         self.time_ratio_bars = {}
@@ -252,7 +248,7 @@ class MouseMagnifyWindow(fantas.Window):
             fantas.WindowConfig(
                 title=f"{windows_title} | 鼠标放大镜",
                 window_size=(256, 320),
-                window_position=(left_offset, top_offset),
+                window_position=(0, 0),
                 mouse_focus=False,
                 input_focus=False,
                 allow_high_dpi=True
@@ -302,138 +298,68 @@ class MouseMagnifyWindow(fantas.Window):
         self.ratio = ratio
         self.ratio_text.text = f"放大倍数: {self.ratio}x"
     
-    def update_mouse_shot(self, surface_bytes: str):
+    def update_mouse_shot(self, x: int, y: int, surface_bytes: bytes):
         """
         更新鼠标截图 Surface。
         Args:
-            surface_bytes (str): 编码后的 Surface 字节数据字符串。
+            x (int): 鼠标截图的 X 坐标。
+            y (int): 鼠标截图的 Y 坐标.
+            surface_bytes (bytes): 鼠标截图的 Surface 字节数据。
         """
-        self.mouse_shot_label.surface.get_buffer().write(b64decode(surface_bytes[4:]))
-        x = int(surface_bytes[0:2])
-        y = int(surface_bytes[2:4])
+        self.mouse_shot_label.surface.get_buffer().write(surface_bytes)
         self.cursor.rect.left = x * self.ratio
         self.cursor.rect.top  = y * self.ratio
         cursor_color = self.mouse_shot_label.surface.get_at((x, y))
         self.cursor.fgcolor = fantas.get_distinct_blackorwhite(cursor_color)
         self.cursor_color_label.bgcolor = cursor_color
 
-def read_debug_command():
-    """
-    从标准输入读取调试命令并放入队列。
-    """
-    fantas.time.delay(100)
-    stdin_fd = sys.stdin.fileno()
-
-    while debug_windows.running:
-        try:
-            readable, _, _ = select.select([stdin_fd], [], [], 0.1)
-
-            if stdin_fd in readable:
-                # 有输入数据时，才执行 readline 读取（不会阻塞）
-                line = sys.stdin.readline()
-                if not line:    # 检测到 stdin 关闭（主程序退出时）
-                    break
-                # 放入命令队列
-                if command_queue.empty():
-                    command_queue.put(line.rstrip('\n'))
-                    fantas.event.post(fantas.Event(fantas.DEBUGRECEIVED))
-                else:
-                    command_queue.put(line.rstrip('\n'))
-        except Exception as e:
-            if debug_windows.running:
-                print(f"读取调试命令异常: {e}", flush=True)
-            break
-
-# 时间记录拆分正则表达式
-split_time_records = re.compile(rf'([^:{re.escape("\x1f")}]+):(-?\d+)')
-
-def handle_debug_command(prompt: str, command: str):
-    """
-    处理调试命令。
-    Args:
-        prompt (str): 命令提示符。
-        command (str): 调试命令字符串。
-    """
-    if fantas.DebugFlag.EVENTLOG in debug_flags and prompt == "EventLog":
-        event_log_window.log_event(command)
-    elif fantas.DebugFlag.TIMERECORD in debug_flags and prompt == "TimeRecord":
-        time_record_window.update_time_records({key.strip(): int(value) for key, value in re.findall(split_time_records, command)})
-    elif fantas.DebugFlag.MOUSEMAGNIFY in debug_flags and prompt == "MouseMagnify":
-        mouse_magnify_window.update_mouse_shot(command)
-
-# 调试命令拆分正则表达式
-split_prompt_command_re = re.compile(r"^\[(.*?)\]\s+(.*)$")
-
-def handle_received_debug_command_event(event: fantas.Event):
+def handle_debug_received_event(event: fantas.Event):
     """
     处理接收到的调试命令事件。
     Args:
         event (fantas.Event): 接收到的调试命令事件对象。
     """
-    while not command_queue.empty():
-        cmd = command_queue.get()
-        match = split_prompt_command_re.match(cmd)
-        if match:
-            prompt = match.group(1)
-            command = match.group(2)
-            handle_debug_command(prompt, command)
+    while not fantas.Debug.queue.empty():
+        data = fantas.Debug.queue.get()
+        prompt = data[0]
+        if prompt == "EventLog":
+            event_log_window.log_event(data[1])
+        elif prompt == "TimeRecord":
+            time_record_window.update_time_records(data[1])
+        elif prompt == "MouseMagnify":
+            mouse_magnify_window.update_mouse_shot(data[1], data[2], data[3])
     return True
-
-# 创建调试命令队列
-command_queue = Queue(maxsize=1024)
 
 # 存储所有调试窗口的列表
 windows = []
-
-windows_title = sys.argv[2]    # 调试窗口标题
-left_offset = 0    # 窗口左侧偏移位置
-top_offset  = 0    # 窗口顶部偏移位置
-max_bottom = 0     # 窗口最大底部位置
-screen_size = fantas.display.get_desktop_sizes()[0]
+# 调试窗口标题
+windows_title = sys.argv[2]
 
 # 如果启用了事件日志调试标志，则创建事件日志窗口
 if fantas.DebugFlag.EVENTLOG in debug_flags:
     event_log_window = EventLogWindow()
     windows.append(event_log_window)
-    if screen_size[0] - left_offset < event_log_window.size[0]:
-        left_offset = 0
-        top_offset = max_bottom
-    left_offset += event_log_window.size[0]
-    max_bottom = max(max_bottom, top_offset + event_log_window.size[1])
-
 # 如果启用了时间记录调试标志，则创建时间记录窗口
 if fantas.DebugFlag.TIMERECORD in debug_flags:
     time_record_window = TimeRecordWindow()
     windows.append(time_record_window)
-    if screen_size[0] - left_offset < time_record_window.size[0]:
-        left_offset = 0
-        top_offset = max_bottom
-    left_offset += time_record_window.size[0]
-    max_bottom = max(max_bottom, top_offset + time_record_window.size[1])
-
 # 如果启用了鼠标放大调试标志，则创建鼠标放大窗口
 if fantas.DebugFlag.MOUSEMAGNIFY in debug_flags:
     mouse_magnify_window = MouseMagnifyWindow()
     windows.append(mouse_magnify_window)
-    if screen_size[0] - left_offset < mouse_magnify_window.size[0]:
-        left_offset = 0
-        top_offset = max_bottom
-    left_offset += mouse_magnify_window.size[0]
-    max_bottom = max(max_bottom, top_offset + mouse_magnify_window.size[1])
-
 # 注册接收调试命令事件的处理器
 for window in windows:
-    window.add_event_listener(fantas.DEBUGRECEIVED, window.root_ui, True, handle_received_debug_command_event)
-
+    window.add_event_listener(fantas.DEBUGRECEIVED, window.root_ui, True, handle_debug_received_event)
 # 创建调试窗口
 debug_windows = fantas.MultiWindow(*windows)
+debug_windows.auto_place_windows(10)
 
-# 启动后台线程读取标准输入
-debug_thread = threading.Thread(target=read_debug_command)
-debug_thread.start()
+# 设置主程序端口号
+fantas.Debug.set_sendto_port(int(sys.argv[3]))
+# 启动读取调试命令的后台线程
+fantas.Debug.start_read_thread()
+# 返回调试窗口的 UDP 端口号给主程序
+print(fantas.get_socket_port(fantas.Debug.udp_socket), flush=True)
 
 # 运行调试窗口主循环
 debug_windows.mainloops()
-
-# 等待调试线程结束
-debug_thread.join()
