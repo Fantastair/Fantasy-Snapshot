@@ -18,8 +18,8 @@ class EventHandler:
 
         # 注册默认事件的处理器
         self.add_event_listener(fantas.WINDOWCLOSE,     self.window.root_ui, True, self.handle_windowclose_event)
-        self.add_event_listener(fantas.WINDOWLEAVE,     self.window.root_ui, True,  self.handle_windowleave_event)
-        self.add_event_listener(fantas.MOUSEMOTION,     self.window.root_ui, True,  self.handle_mousemotion_event)
+        self.add_event_listener(fantas.WINDOWLEAVE,     self.window.root_ui, True, self.handle_windowleave_event)
+        self.add_event_listener(fantas.MOUSEMOTION,     self.window.root_ui, True, self.handle_mousemotion_event)
         self.add_event_listener(fantas.MOUSEBUTTONDOWN, self.window.root_ui, True, self.handle_mousebuttondown_event)
         self.add_event_listener(fantas.MOUSEBUTTONUP,   self.window.root_ui, True, self.handle_mousebuttonup_event)
 

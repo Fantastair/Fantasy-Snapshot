@@ -1,6 +1,7 @@
 from __future__ import annotations
 import copy
-from dataclasses import dataclass, field
+from bisect import bisect_right
+from dataclasses import dataclass
 
 import pygame.freetype
 from pygame.sysfont import SysFont as _SysFont
@@ -13,6 +14,7 @@ __all__ = (
     "get_font_by_id",
     "TextStyle",
     "DEFAULTTEXTSTYLE",
+    "set_default_text_style",
 )
 
 class Font(pygame.freetype.Font):
@@ -77,14 +79,46 @@ class Font(pygame.freetype.Font):
         # 返回度量信息元组（节省缓存空间，并防篡改）
         return tuple(widthes)
 
+    @fantas.lru_cache_typed(maxsize=512, typed=True)
+    def auto_wrap(self, style_flag: fantas.TextStyleFlag, size: float, text: str, width: int) -> tuple[tuple[str, int]]:
+        """
+        自动换行文本。
+        Args:
+            style_flag (fantas.TextStyleFlag): 字体样式标志。
+            size       (float)               : 字体大小。
+            text       (str)                 : 要测量的文本内容。
+            width      (int)                 : 最大宽度限制。
+        Returns:
+            tuple[tuple[str, int]]: 换行后的文本行列表，每行包含文本内容和宽度。
+        """
+        results = []
+        append = results.append
+        for text in text.splitlines():
+            line_width = self.get_widthes(style_flag, size, text) if text else [0]
+            # 如果整行宽度小于等于区域宽度则直接添加
+            if line_width[-1] <= width:
+                append((text, line_width[-1]))
+                continue
+            # 否则拆行
+            last_index = 0
+            _width = width
+            while last_index < len(text):
+                line_index = bisect_right(line_width, _width, lo=last_index)
+                if line_index == last_index:
+                    line_index += 1
+                append((text[last_index:line_index], line_width[line_index - 1] - (line_width[last_index - 1] if last_index > 0 else 0)))
+                last_index = line_index
+                _width = line_width[line_index - 1] + width
+        return tuple(results)
+
 pygame.freetype.Font = Font
 
-def SysFont(name, size=16) -> Font:
+def SysFont(name, size: float = 16.0) -> Font:
     """
     创建并返回一个系统字体的 Font 实例。
     Args:
-        name (str): 字体名称。
-        size (int): 字体大小，默认为 16。
+        name        : 字体名称。
+        size (float): 字体大小，默认为 16.0。
     Returns:
         Font: 创建的字体实例。
     """
@@ -121,3 +155,24 @@ class TextStyle:
         return copy.copy(self)
 
 DEFAULTTEXTSTYLE = TextStyle()    # 默认文本样式
+
+def set_default_text_style(font: fantas.Font = None,
+                           size: float = None,
+                           fgcolor: fantas.ColorLike = None,
+                           style_flag: fantas.TextStyleFlag = None) -> None:
+    """
+    设置默认文本样式。
+    Args:
+        font       (fantas.Font)         : 字体。
+        size       (float)               : 字体大小。
+        fgcolor    (fantas.ColorLike)    : 文本颜色。
+        style_flag (fantas.TextStyleFlag): 文本风格标志。
+    """
+    if font is not None:
+        DEFAULTTEXTSTYLE.font = font
+    if size is not None:
+        DEFAULTTEXTSTYLE.size = size
+    if fgcolor is not None:
+        DEFAULTTEXTSTYLE.fgcolor = fgcolor
+    if style_flag is not None:
+        DEFAULTTEXTSTYLE.style_flag = style_flag

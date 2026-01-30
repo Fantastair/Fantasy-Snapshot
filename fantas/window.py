@@ -1,5 +1,5 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import fantas
 from pygame.window import Window as PygameWindow
@@ -7,6 +7,8 @@ from pygame.window import Window as PygameWindow
 __all__ = (
     "WindowConfig",
     "Window",
+    "MultiWindow",
+    "DebugTimer",
 )
 
 @dataclass(slots=True)
@@ -78,59 +80,75 @@ class Window(PygameWindow):
         """
         进入窗口的主事件循环，直到窗口关闭。
         """
+        # 简化引用
+        clock = self.clock
+        event_handler = self.event_handler
+        renderer = self.renderer
+        root_ui = self.root_ui
+        screen = self.screen
+        flip = self.flip
         # 清空事件队列
         fantas.event.clear()
         # 预生成传递路径缓存
-        self.root_ui.build_pass_path_cache()
+        root_ui.build_pass_path_cache()
         # 主循环
         while self.running:
             # 限制帧率
-            self.clock.tick(self.fps)
+            clock.tick(self.fps)
             # 处理事件
             for event in fantas.event.get():
-                self.event_handler.handle_event(event)
+                event_handler.handle_event(event)
             # 生成渲染命令
-            self.renderer.pre_render(self.root_ui)
+            renderer.pre_render(root_ui)
             # 渲染窗口
-            self.renderer.render(self.screen)
+            renderer.render(screen)
             # 更新窗口显示
-            self.flip()
-        # 退出主循环后销毁窗口
+            flip()
         self.destroy()
-    
+
     def mainloop_debug(self):
         """
         以调试模式进入窗口的主事件循环，直到窗口关闭。
         """
         # === 调试 ===
-        if not fantas.Debug.is_debug_window_open():
+        if not fantas.Debug.is_debuging():
             raise RuntimeError("调试窗口未打开，无法进入调试主循环。")
-        self.debug_time = 0    # 记录调试额外消耗时间，用于更精准的测量各阶段时间消耗
         # === 调试 ===
 
+        # 简化引用
+        clock = self.clock
+        event_handler = self.event_handler
+        renderer = self.renderer
+        root_ui = self.root_ui
+        screen = self.screen
+        flip = self.flip
+        EVENTLOG = fantas.DebugFlag.EVENTLOG
+        TIMERECORD = fantas.DebugFlag.TIMERECORD
+        MOUSEMAGNIFY = fantas.DebugFlag.MOUSEMAGNIFY
         # 清空事件队列
         fantas.event.clear()
         # 预生成传递路径缓存
-        self.root_ui.build_pass_path_cache()
+        root_ui.build_pass_path_cache()
 
         # === 调试 ===
         # 监听调试输出事件
-        READDEBUGOUTPUT = fantas.custom_event()
-        fantas.event.set_allowed(READDEBUGOUTPUT)
-        self.add_event_listener(READDEBUGOUTPUT, self.root_ui, True, self.read_debug_output)
-        fantas.time.set_timer(fantas.Event(READDEBUGOUTPUT), 100)
-        time_list: list[int] = [fantas.get_time_ns()]
+        self.add_event_listener(fantas.DEBUGRECEIVED, root_ui, True, self.read_debug_output)
+        # 开启调试输出事件定时器
+        fantas.time.set_timer(fantas.Event(fantas.DEBUGRECEIVED), 100)
         # 监听鼠标移动事件
-        self.add_event_listener(fantas.MOUSEMOTION, self.root_ui, True, self.debug_send_mouse_surface)
+        if MOUSEMAGNIFY in fantas.Debug.debug_flag:
+            self.add_event_listener(fantas.MOUSEMOTION, root_ui, True, self.debug_send_mouse_surface)
+        # 创建调试计时器
+        self.debug_timer = debug_timer = DebugTimer()
         # === 调试 ===
 
         # 主循环
         while self.running:
             # 限制帧率
-            self.clock.tick(self.fps)
+            clock.tick(self.fps)
 
             # === 调试 ===
-            time_list.append(fantas.get_time_ns() - self.debug_time)    # 1，空闲时间
+            debug_timer.record("Idle")
             # === 调试 ===
 
             # 处理事件
@@ -138,53 +156,56 @@ class Window(PygameWindow):
 
                 # === 调试 ===
                 # 发送事件信息到调试窗口
-                t = fantas.get_time_ns()
-                if event.type != READDEBUGOUTPUT:
+                debug_timer.record("Event")
+                if fantas.DebugFlag.EVENTLOG in fantas.Debug.debug_flag and event.type != fantas.DEBUGRECEIVED:
                     fantas.Debug.send_debug_command(str(event), "EventLog")
-                self.debug_time += fantas.get_time_ns() - t
+                debug_timer.record("Debug")
                 # === 调试 ===
 
-                self.event_handler.handle_event(event)
+                event_handler.handle_event(event)
 
             # === 调试 ===
-            time_list.append(fantas.get_time_ns() - self.debug_time)    # 2，事件处理时间
+            debug_timer.record("Event")
             # === 调试 ===
 
             # 生成渲染命令
-            self.renderer.pre_render(self.root_ui)
+            renderer.pre_render(root_ui)
 
             # === 调试 ===
-            time_list.append(fantas.get_time_ns() - self.debug_time)    # 3，生成渲染命令时间
+            debug_timer.record("PreRender")
             # === 调试 ===
 
             # 渲染窗口
-            self.renderer.render(self.screen)
+            renderer.render(screen)
             # 更新窗口显示
-            self.flip()
+            flip()
 
             # === 调试 ===
-            t = fantas.get_time_ns()
-            time_list.append(t - self.debug_time)    # 4，渲染时间
-            time_list.append(t)                      # 5，结束时间，也是下一帧的起始时间
-            fantas.Debug.send_debug_command(str(time_list), "FrameTime")
-            time_list.clear()
-            time_list.append(t)    # 0，起始时间
-            self.debug_time = fantas.get_time_ns() - t
+            debug_timer.record("Render")
+            # 发送计时记录到调试窗口
+            if fantas.DebugFlag.TIMERECORD in fantas.Debug.debug_flag:
+                fantas.Debug.send_debug_command(debug_timer.get_records(), "TimeRecord")
+            # 清空计时记录
+            debug_timer.clear()
             # === 调试 ===
-        # 退出主循环后销毁窗口
+        # === 调试 ===
+        # 关闭调试输出事件定时器
+        fantas.time.set_timer(fantas.Event(fantas.DEBUGRECEIVED), 0)
+        # === 调试 ===
+
         self.destroy()
-    
+
     def read_debug_output(self, event: fantas.Event):
         """
         处理从调试窗口接收到输出信息的事件。
         Args:
             event (fantas.Event): 触发此事件的 fantas.Event 实例。
         """
-        t = fantas.get_time_ns()
+        self.debug_timer.record("Event")
         while not fantas.Debug.queue.empty():
             output = fantas.Debug.queue.get()
             self.handle_debug_output(output)
-        self.debug_time += fantas.get_time_ns() - t
+        self.debug_timer.record("Debug")
 
     def handle_debug_output(self, output: str):
         """
@@ -201,7 +222,7 @@ class Window(PygameWindow):
             event (fantas.Event): 触发此事件的 fantas.Event 实例。
         """
         # 获取鼠标位置附近的 Surface 截图
-        t = fantas.get_time_ns()
+        self.debug_timer.record("Event")
         from base64 import b64encode
         size = 32
         pos = list(event.pos)
@@ -218,5 +239,243 @@ class Window(PygameWindow):
             rect.bottom = self.size[1]
         surface_str = b64encode(self.screen.subsurface(rect).convert_alpha().get_buffer().raw).decode('utf-8')
         # 发送到调试窗口
-        fantas.Debug.send_debug_command(f"{str(pos[0] - rect.left).rjust(2, '0')}{str(pos[1] - rect.top).rjust(2, '0')}{surface_str}", "MouseSurface")
-        self.debug_time += fantas.get_time_ns() - t
+        fantas.Debug.send_debug_command(f"{str(pos[0] - rect.left).rjust(2, '0')}{str(pos[1] - rect.top).rjust(2, '0')}{surface_str}", "MouseMagnify")
+        self.debug_timer.record("Debug")
+
+class MultiWindow:
+    """
+    多窗口管理类，用于管理多个窗口实例。
+    """
+    def __init__(self, *windows: Window, fps: int = 60):
+        """
+        初始化 MultiWindow 实例。
+        Args:
+            *windows (Window): 可变数量的 Window 实例，表示要管理的多个窗口。
+        """
+        self.fps    : int               = fps                                          # 窗口帧率设置
+        self.clock  : fantas.time.Clock = fantas.time.Clock()                          # 用于控制帧率的时钟对象
+        self.windows: dict[int, Window] = {window.id: window for window in windows}    # 管理的窗口字典，键为窗口 ID，值为 Window 实例
+        self.running: bool              = True                                         # 多窗口运行状态标志
+
+    def append(self, window: Window):
+        """
+        添加一个窗口到管理列表中。
+        Args:
+            window (Window): 要添加的 Window 实例。
+        """
+        self.windows[window.id] = window
+
+    def pop(self, window: Window) -> Window | None:
+        """
+        从管理列表中移除一个窗口。
+        Args:
+            window (Window): 要移除的 Window 实例。
+        Returns:
+            Window | None: 如果窗口存在则返回被移除的 Window 实例，否则返回 None。
+        """
+        return self.windows.pop(window.id, None)
+
+    def get_window(self, window_id: int) -> Window | None:
+        """
+        根据窗口 ID 获取对应的窗口实例。
+        Args:
+            window_id (int): 窗口的唯一标识符 ID。
+        Returns:
+            Window | None: 如果找到对应的窗口则返回 Window 实例，否则返回 None。
+        """
+        return self.windows.get(window_id, None)
+
+    def handle_window_close_event(self, event: fantas.Event):
+        """
+        处理窗口关闭事件，将对应的窗口从管理列表中移除。
+        Args:
+            event (fantas.Event): 触发此事件的 fantas.Event 实例。
+        """
+        window = event.window
+        self.pop(window).destroy()
+        if not self.windows:
+            self.running = False
+
+    def mainloops(self):
+        """
+        进入所有管理窗口的主事件循环，直到所有窗口关闭。
+        """
+        # 简化引用
+        clock = self.clock
+        windows = self.windows
+        get_window = self.get_window
+        # 清空事件队列
+        fantas.event.clear()
+        for window in windows.values():
+            # 预生成传递路径缓存
+            window.root_ui.build_pass_path_cache()
+            # 注册关闭事件监听器
+            window.add_event_listener(fantas.WINDOWCLOSE, window.root_ui, True, self.handle_window_close_event)
+        # 主循环
+        while self.running:
+            # 限制帧率
+            clock.tick(self.fps)
+            # 处理事件
+            for event in fantas.event.get():
+                # 如果事件关联到特定窗口，则只传递给该窗口，否则传递给所有窗口
+                # print(event, flush=True)
+                if hasattr(event, 'window'):
+                    window = event.window
+                else:
+                    window = None
+                if window is not None:
+                    window.event_handler.handle_event(event)
+                else:
+                    for window in windows.values():
+                        window.event_handler.handle_event(event)
+            # 渲染所有窗口
+            for window in windows.values():
+                # 生成渲染命令
+                window.renderer.pre_render(window.root_ui)
+                # 渲染窗口
+                window.renderer.render(window.screen)
+                # 更新窗口显示
+                window.flip()
+
+    def mainloops_debug(self):
+        """
+        以调试模式进入所有管理窗口的主事件循环，直到所有窗口关闭。
+        """
+        # === 调试 ===
+        if not fantas.Debug.is_debuging():
+            raise RuntimeError("调试窗口未打开，无法进入调试主循环。")
+        # 创建调试计时器
+        debug_timer = DebugTimer()
+        # === 调试 ===
+
+        # 简化引用
+        clock = self.clock
+        windows = self.windows
+        get_window = self.get_window
+        # 清空事件队列
+        fantas.event.clear()
+        for window in windows.values():
+            # 预生成传递路径缓存
+            window.root_ui.build_pass_path_cache()
+            # 注册关闭事件监听器
+            window.add_event_listener(fantas.WINDOWCLOSE, window.root_ui, True, self.handle_window_close_event)
+
+            # === 调试 ===
+            # 共用计时器
+            window.debug_timer = debug_timer
+            # 监听调试输出事件
+            window.add_event_listener(fantas.DEBUGRECEIVED, window.root_ui, True, window.read_debug_output)
+            # 监听鼠标移动事件
+            window.add_event_listener(fantas.MOUSEMOTION, window.root_ui, True, window.debug_send_mouse_surface)
+            # === 调试 ===
+        # === 调试 ===
+        # 开启调试输出事件定时器
+        fantas.time.set_timer(fantas.Event(fantas.DEBUGRECEIVED), 100)
+        # 重置调试计时器
+        debug_timer.reset()
+        # === 调试 ===
+
+        # 主循环
+        while windows:
+            # 限制帧率
+            clock.tick(self.fps)
+
+            # === 调试 ===
+            debug_timer.record("Idle")
+            # === 调试 ===
+
+            # 处理事件
+            for event in fantas.event.get():
+
+                # === 调试 ===
+                # 发送事件信息到调试窗口
+                debug_timer.record("Event")
+                if fantas.DebugFlag.EVENTLOG in fantas.Debug.debug_flag and event.type != fantas.DEBUGRECEIVED:
+                    fantas.Debug.send_debug_command(str(event), "EventLog")
+                debug_timer.record("Debug")
+                # === 调试 ===
+
+                # 如果事件关联到特定窗口，则只传递给该窗口，否则传递给所有窗口
+                if hasattr(event, 'window'):
+                    window = event.window
+                else:
+                    window = None
+                if window is not None:
+                    window.event_handler.handle_event(event)
+                else:
+                    for window in windows.values():
+                        window.event_handler.handle_event(event)
+
+            # === 调试 ===
+            debug_timer.record("Event")
+            # === 调试 ===
+
+            # 渲染所有窗口
+            for window in windows.values():
+                # 生成渲染命令
+                window.renderer.pre_render(window.root_ui)
+
+                # === 调试 ===
+                debug_timer.record("PreRender")
+                # === 调试 ===
+
+                # 渲染窗口
+                window.renderer.render(window.screen)
+                # 更新窗口显示
+                window.flip()
+
+                # === 调试 ===
+                debug_timer.record("Render")
+                # === 调试 ===
+
+            # === 调试 ===
+            # 发送计时记录到调试窗口
+            if fantas.DebugFlag.TIMERECORD in fantas.Debug.debug_flag:
+                fantas.Debug.send_debug_command(debug_timer.get_records(), "TimeRecord")
+            # 清空计时记录
+            debug_timer.clear()
+            # === 调试 ===
+        # === 调试 ===
+        # 关闭调试输出事件定时器
+        fantas.time.set_timer(fantas.Event(fantas.DEBUGRECEIVED), 0)
+        # === 调试 ===
+
+@dataclass(slots=True)
+class DebugTimer:
+    """
+    调试计时器类，用于测量代码执行时间。
+    """
+
+    last_time   : int            = field(default_factory=fantas.get_time_ns, init=False, repr=False)    # 上一次记录的时间点（纳秒）
+    time_records: dict[str, int] = field(default_factory=dict, init=False)    # 记录的时间数据字典
+
+    def record(self, label: str):
+        """
+        记录从上一次调用 record 方法到当前的时间差，并累计到指定标签的时间记录中。
+        Args:
+            label (str): 用于标识时间记录的标签。
+        """
+        current_time = fantas.get_time_ns()
+        self.time_records[label] = self.time_records.get(label, 0) + current_time - self.last_time
+        self.last_time = current_time
+
+    def reset(self):
+        """
+        重置计时器，清空所有时间记录并更新上一次记录的时间点为当前时间。
+        """
+        self.time_records.clear()
+        self.last_time = fantas.get_time_ns()
+
+    def clear(self):
+        """
+        清空所有时间记录，但不更新上一次记录的时间点。
+        """
+        self.time_records.clear()
+
+    def get_records(self) -> str:
+        """
+        获取当前的时间记录字符串表示。
+        Returns:
+            str: 当前时间记录的字符串表示。
+        """
+        return '\x1f'.join(f"{label}:{time_ns}" for label, time_ns in self.time_records.items())

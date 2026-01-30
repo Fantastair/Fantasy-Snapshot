@@ -18,6 +18,12 @@
     获取制定样式文本的字符宽度度量信息。
     `fantas.Font.get_widthes(self, style_flag: fantas.TextStyleFlag, size: float, text: str) -> tuple[int]`
     该方法会缓存计算结果以提升性能。
+  
+  - auto_wrap()
+    自动换行文本。
+    `fantas.Font.auto_wrap(self, style_flag: fantas.TextStyleFlag, size: float, text: str, width: float) -> tuple[tuple[str, int]]`
+    根据指定宽度自动换行文本，返回换行后的文本行列表及其宽度。
+    该方法会缓存计算结果以提升性能。
 
 - **fantas.TextStyle**
   文本样式类。
@@ -40,3 +46,8 @@ TextStyle(
 - **fantas.get_font_by_id**
   通过字体 ID 获取字体对象。
   `fantas.get_font_by_id(font_id: int) -> fantas.Font | None`
+
+- **fantas.set_default_text_style**
+  设置默认文本样式。
+  `fantas.set_default_text_style(font: fantas.Font = None, size: float = None, fgcolor: fantas.ColorLike = None, style_flag: fantas.TextStyleFlag = None) -> None`
+  修改默认文本样式的属性。

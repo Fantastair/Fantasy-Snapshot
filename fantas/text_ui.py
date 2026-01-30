@@ -11,9 +11,7 @@ __all__ = (
 @dataclass(slots=True)
 class TextLine(fantas.UI):
     """ 纯色单行文本 UI 类 """
-    father  : fantas.UI | None   = field(default=None, init=False, repr=False)                     # 指向父显示元素
-    children: None               = field(default=None, init=False, repr=False)                     # 纯色文本不包含子元素
-    ui_id   : fantas.UIID        = field(default_factory=fantas.generate_unique_id, init=False)    # 唯一标识 ID
+    children: None               = field(default=None, init=False, repr=False)    # 纯色文本不包含子元素
 
     text    : str                = 'text'                                     # 显示的文本内容
     style   : fantas.TextStyle   = field(default_factory=fantas.TextStyle)    # 文本样式
@@ -46,15 +44,14 @@ class TextLine(fantas.UI):
 @dataclass(slots=True)
 class Text(fantas.UI):
     """ 纯色多行文本 UI 类 """
-    father  : fantas.UI | None   = field(default=None, init=False, repr=False)                     # 指向父显示元素
-    children: None               = field(default=None, init=False, repr=False)                     # 纯色文本不包含子元素
-    ui_id   : fantas.UIID        = field(default_factory=fantas.generate_unique_id, init=False)    # 唯一标识 ID
+    children: None               = field(default=None, init=False, repr=False)                 # 纯色文本不包含子元素
 
     text    : str                = 'text'                                                      # 显示的文本内容
     style   : fantas.TextStyle   = field(default_factory=fantas.TextStyle)                     # 文本样式
     line_spacing: float          = 4.0                                                         # 行间距
     rect    : fantas.RectLike    = field(default_factory=lambda: fantas.Rect(0, 0, 100, 0))    # 文本显示区域
     align_mode: fantas.AlignMode = fantas.AlignMode.LEFT                                       # 对齐模式
+    reverse : bool               = False                                                       # 是否反向渲染文本
 
     command : fantas.TextRenderCommand = field(init=False, repr=False)    # 渲染命令
 
@@ -88,5 +85,15 @@ class Text(fantas.UI):
             rc.rect = self.rect.move(offset)
         # 设置对齐模式
         rc.align_mode = self.align_mode
+        # 设置反向渲染标志
+        rc.reverse = self.reverse
         # 生成渲染命令
         yield rc
+
+    def get_lineheight(self) -> float:
+        """ 获取文本行高（包含行间距） """
+        return self.style.font.get_sized_height(self.style.size) + self.line_spacing
+    def set_lineheight(self, lineheight: float) -> None:
+        """ 设置文本行高（包含行间距） """
+        self.line_spacing = lineheight - self.style.font.get_sized_height(self.style.size)
+    line_height = property(get_lineheight, set_lineheight)

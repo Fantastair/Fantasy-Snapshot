@@ -37,10 +37,6 @@ class LabelRenderCommands:
 @dataclass(slots=True)
 class Label(fantas.UI):
     """ 纯色矩形 UI 类 """
-    father  : fantas.UI | None = field(default=None, init=False, repr=False)                     # 指向父显示元素
-    children: list[fantas.UI]  = field(default_factory=list, init=False, repr=False)             # 子显示元素列表
-    ui_id   : fantas.UIID      = field(default_factory=fantas.generate_unique_id, init=False)    # 唯一标识 ID
-
     bgcolor: fantas.ColorLike | None   = 'black'                                                      # 背景颜色
     fgcolor: fantas.ColorLike          = 'white'                                                      # 前景颜色
     rect   : fantas.RectLike           = field(default_factory=lambda: fantas.Rect(0, 0, 100, 50))    # 矩形区域

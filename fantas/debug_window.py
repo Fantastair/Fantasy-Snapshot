@@ -5,6 +5,7 @@
 from __future__ import annotations
 import re
 import sys
+import select
 import threading
 from queue import Queue
 from base64 import b64decode
@@ -12,244 +13,84 @@ from collections import deque
 
 import fantas
 
-def make_lpf(alpha, ma_win=3):
+debug_flags = fantas.DebugFlag(int(sys.argv[1]))
+
+# 如果没有启用任何调试标志，则退出子进程
+if not debug_flags in fantas.DebugFlag.ALL:
+    sys.exit(0)
+
+# 预加载资源
+fantas.colors.load("white")
+fantas.colors.load("#e3e3e3", "debug_fg")
+fantas.colors.load("#303030", "debug_bg")
+
+fantas.set_default_text_style(
+    font=fantas.fonts.DEFAULTSYSFONT,
+    size=20,
+    fgcolor=fantas.colors.get("debug_fg")
+)
+
+class Lpf:
     """
-    滑动平均 + 一阶低通滤波器生成函数。
-    Args:
-        alpha (float): 一阶低通滤波器的平滑系数，取值范围为0到1。
-        ma_win (int): 滑动平均窗口大小，默认值为3。
-    Returns:
-        function: 返回一个滤波函数，调用该函数并传入新的数据点即可获得滤波后的结果。
+    滑动平均 + 一阶低通滤波器类。
     """
-    buf = deque([0]*ma_win, maxlen=ma_win)
-    y = 0
-    def filt(x):
-        nonlocal y
-        buf.append(x)
-        z = sum(buf)/ma_win          # 滑动平均
-        y = alpha*z + (1-alpha)*y    # 一阶低通
-        return y
-    return filt
+    _lpf_map: dict[str, callable] = {}
 
-RECEIVEDDEBUGCOMMAND = fantas.custom_event()    # 用于接收调试命令的自定义事件类型
-fantas.event.set_allowed(RECEIVEDDEBUGCOMMAND)
-
-# 调试命令拆分正则表达式
-split_prompt_command_re = re.compile(r"^\[(.*?)\]\s+(.*)$")
-
-lpf_map = {
-    "Event":         make_lpf(0.05, 5),
-    "PreRender":     make_lpf(0.05, 5),
-    "Render":        make_lpf(0.05, 5),
-    "Debug":         make_lpf(0.05, 5),
-    "Idle":          make_lpf(0.05, 5),
-    "EventTime":     make_lpf(0.05, 5),
-    "PreRenderTime": make_lpf(0.05, 5),
-    "RenderTime":    make_lpf(0.05, 5),
-    "DebugTime":     make_lpf(0.05, 5),
-    "IdleTime":      make_lpf(0.05, 5),
-}
-
-# 中文字体支持
-chinese_font = fantas.SysFont(("SimHei", "Microsoft YaHei", "Maple Mono Normal NF CN"), 16)
-chinese_font.origin = True
-
-class RatioBar:
-    """
-    比例条类，用于显示时间占比。
-    """
-    def __init__(self, width: int, height: int, parent_ui: fantas.UI, legend_box: LegendBox):
-        self.legend_box = legend_box
-        self.box = fantas.Label(
-            bgcolor=None,
-            rect=fantas.Rect(0, 0, width, height),
-        )
-        parent_ui.append(self.box)
-        self.sub_bar = {
-            "Event": fantas.Label(
-                bgcolor=fantas.Color("#e74c3c"),
-                rect=fantas.Rect(0, 0, 0, height),
-                border_radius=6,
-                quadrant=fantas.Quadrant.TOPLEFT | fantas.Quadrant.BOTTOMLEFT,
-            ),
-            "PreRender": fantas.Label(
-                bgcolor=fantas.Color("#9b59b6"),
-                rect=fantas.Rect(0, 0, 0, height),
-            ),
-            "Render": fantas.Label(
-                bgcolor=fantas.Color("#f1c40f"),
-                rect=fantas.Rect(0, 0, 0, height),
-            ),
-            "Debug": fantas.Label(
-                bgcolor=fantas.Color("#7d7d7d"),
-                rect=fantas.Rect(0, 0, 0, height),
-            ),
-            "Idle": fantas.Label(
-                bgcolor=fantas.Color("#2ecc71"),
-                rect=fantas.Rect(0, 0, 0, height),
-                border_radius=6,
-                quadrant=fantas.Quadrant.TOPRIGHT | fantas.Quadrant.BOTTOMRIGHT,
-            ),
-        }
-        for bar in self.sub_bar.values():
-            self.box.append(bar)
-
-    def set_time(self, time_list: list[int]):
+    @staticmethod
+    def flit(name: str, x: float, alpha: float = 0.1, ma_win: int = 3) -> float:
         """
-        设置各阶段时间并更新比例条显示。
+        调用滤波器进行滤波。
         Args:
-            time_list (list[int]): 包含各阶段时间的列表，单位ns。
+            name (str): 滤波器名称。
+            x (float): 新的数据点。
+            alpha (float): 一阶低通滤波系数，范围 0.0 - 1.0，默认值为 0.1。
+            ma_win (int): 滑动平均窗口大小，默认值为 3。
+        Returns:
+            float: 滤波后的结果。
         """
-        total_time = time_list[-1] - time_list[0]
-        idle_time      = time_list[1] - time_list[0]
-        event_time     = time_list[2] - time_list[1]
-        prerender_time = time_list[3] - time_list[2]
-        render_time    = time_list[4] - time_list[3]
-        debug_time     = time_list[5] - time_list[4]
-        times = {
-            "Idle": idle_time,
-            "Event": event_time,
-            "PreRender": prerender_time,
-            "Debug": debug_time,
-            "Render": render_time,
-        }
-        x = 0
-        for key, bar in self.sub_bar.items():
-            width = round(lpf_map[key](self.box.rect.width * times[key] / total_time))
-            bar.rect.left = x
-            bar.rect.width = width
-            x += width
-            time = lpf_map[f"{key}Time"](times[key] / 1e6)
-            self.legend_box.time_texts[key].text = f"{time:.2f} ms"
-        self.sub_bar["Idle"].rect.width = self.box.rect.width - self.sub_bar["Idle"].rect.left
+        if name not in Lpf._lpf_map:
+            flit = Lpf._lpf_map[name] = [deque([0]*ma_win, maxlen=ma_win), 0, alpha, ma_win]
+        else:
+            flit = Lpf._lpf_map[name]
+        flit[0].append(x)
+        flit[1] = flit[2]*sum(flit[0])/flit[3] + (1-flit[2])*flit[1]
+        return flit[1]
 
-class LegendBox:
-    """
-    图例框类，用于显示时间占比图例。
-    """
-
-    text_style = fantas.TextStyle(
-        size=20,
-        fgcolor=fantas.Color("#e3e3e3"),
-        font=chinese_font,
-    )
-    
-    def __init__(self, parent_ui: fantas.UI):
-        self.legend_box = fantas.Label(
-            bgcolor=fantas.Color("#303030"),
-            fgcolor=fantas.Color("#e3e3e3"),
-            rect=fantas.Rect(0, 0, 240, 136),
-            border_radius=12,
-            border_width=3,
-            box_mode=fantas.BoxMode.OUTSIDE,
-        )
-        parent_ui.append(self.legend_box)
-        legend_items = (
-            ("Event",     "#e74c3c", "事件处理"),
-            ("PreRender", "#9b59b6", "预渲染"),
-            ("Render",    "#f1c40f", "渲染"),
-            ("Debug",     "#7d7d7d", "调试"),
-            ("Idle",      "#2ecc71", "空闲"),
-        )
-        self.time_texts = {}
-        for i, (name, color, desc) in enumerate(legend_items):
-            color_box = fantas.Label(
-                bgcolor=fantas.Color(color),
-                fgcolor=fantas.Color("#e3e3e3"),
-                rect=fantas.Rect(6, 6 + i*26, 20, 20),
-                border_width=3,
-                box_mode=fantas.BoxMode.INSIDE,
-            )
-            self.legend_box.append(color_box)
-            desc_text = fantas.TextLine(
-                text=desc,
-                style=LegendBox.text_style,
-                origin=(38, 24 + i*26),
-            )
-            self.legend_box.append(desc_text)
-            time_text = fantas.TextLine(
-                text="0 ms",
-                style=LegendBox.text_style,
-                origin=(140, 24 + i*26),
-            )
-            self.legend_box.append(time_text)
-            self.time_texts[name] = time_text
-
-class FrameTimer:
-    """
-    帧计时器类，用于显示帧率及时间占比。
-    """
-
-    fps_text_style = fantas.TextStyle(
-        size=24,
-        fgcolor=fantas.Color("#e3e3e3"),
-    )
-    
-    def __init__(self, width: int, height: int, parent_ui: fantas.UI):
-        # 显示框
-        self.box = fantas.Label(
-            bgcolor=fantas.Color("#303030"),
-            fgcolor=fantas.Color("#e3e3e3"),
-            rect=fantas.Rect(0, 0, width, height),
-            border_radius=12,
-            border_width=3,
-            box_mode=fantas.BoxMode.OUTSIDE,
-        )
-        parent_ui.append(self.box)
-        # 帧率文本
-        self.fps_text = fantas.TextLine(
-            text="FPS: 0.0",
-            style=FrameTimer.fps_text_style,
-            origin=(8, 29),
-        )
-        self.box.append(self.fps_text)
-        self.fps_lpf = make_lpf(0.05, 5)
-        # 比例条宽度
-        self.fps_text_width = 160
-        self.bar_width = width - self.fps_text_width - 28
-        # 图例
-        self.legend_box = LegendBox(parent_ui)
-        # 比例条
-        self.ratio_bar = RatioBar(self.bar_width, 24, self.box, self.legend_box)
-        self.ratio_bar.box.rect.topleft = (self.fps_text_width + 20, 8)
-
-    def show_frame_time(self, time_list: list[int]):
+    @staticmethod
+    def delete_lpf(name: str):
         """
-        显示帧时间信息。
+        删除指定名称的滤波器。
         Args:
-            time_list (list[int]): 包含各阶段时间的列表，单位ns。
+            name (str): 滤波器名称。
         """
-        fps = self.fps_lpf(1e9 / (time_list[-1] - time_list[0]))
-        self.fps_text.text = f"FPS: {fps:.2f}"
-        # 设置比例条时间
-        self.ratio_bar.set_time(time_list)
+        if name in Lpf._lpf_map:
+            del Lpf._lpf_map[name]
 
-class EventLogBox:
-    """
-    事件日志框类，用于显示事件日志信息。
-    """
+class EventLogWindow(fantas.Window):
+    """ 事件日志窗口类。 """
 
-    text_style = fantas.TextStyle(
-        size=20,
-        fgcolor=fantas.Color("#e3e3e3"),
-        font=chinese_font,
-    )
+    min_size = (512, 288)
 
-    def __init__(self, width: int, height: int, parent_ui: fantas.UI):
-        self.box = fantas.Label(
-            bgcolor=fantas.Color("#303030"),
-            fgcolor=fantas.Color("#e3e3e3"),
-            rect=fantas.Rect(0, 0, width, height),
-            border_radius=12,
-            border_width=3,
-            box_mode=fantas.BoxMode.OUTSIDE,
+    def __init__(self):
+        super().__init__(
+            fantas.WindowConfig(
+                title=f"{windows_title} | 事件日志",
+                window_size=(600, 400),
+                window_position=(left_offset, top_offset),
+                resizable=True,
+                mouse_focus=False,
+                input_focus=False,
+                allow_high_dpi=True,
+            )
         )
-        parent_ui.append(self.box)
-        self.lines: deque[str] = deque(['']*5, maxlen=5)
-        self.text = fantas.Text(style=EventLogBox.text_style, rect=self.box.rect.inflate(-20, 0), line_spacing=0)
-        self.text.rect.top += 2
-        self.text.rect.height = 0
-        self.box.append(self.text)
+        self.background = fantas.ColorBackground(fantas.colors.get("debug_bg"))
+        self.root_ui.append(self.background)
+
+        self.text = fantas.Text(style=fantas.DEFAULTTEXTSTYLE, rect=fantas.Rect(10, 0, self.size[0] - 20, self.size[1]), reverse=True)
+        self.background.append(self.text)
+
+        self.lines: deque[str] = deque(maxlen=10)
+        self.add_event_listener(fantas.WINDOWRESIZED, self.root_ui, True, self.handle_WINDOWRESIZED_event)
 
     def log_event(self, event_str: str):
         """
@@ -258,123 +99,341 @@ class EventLogBox:
             event_str (str): 事件信息字符串。
         """
         self.lines.append(event_str)
-        self.text.text = '\n'.join(self.lines)
+        self.text.text = '\n---\n'.join(self.lines)
 
-class MouseSurface:
-    def __init__(self, parent_ui: fantas.UI):
-        self.box = fantas.Label(
-            bgcolor=None,
-            fgcolor=fantas.Color("#e3e3e3"),
-            rect=fantas.Rect(0, 0, 128, 128),
-            border_radius=3,
-            border_width=3,
-            box_mode=fantas.BoxMode.OUTSIDE,
+    def handle_WINDOWRESIZED_event(self, event: fantas.Event):
+        """
+        处理窗口大小改变事件。
+        Args:
+            event (fantas.Event): 窗口大小改变事件对象。
+        """
+        if event.x < EventLogWindow.min_size[0]:
+            event.x = EventLogWindow.min_size[0]
+        if event.y < EventLogWindow.min_size[1]:
+            event.y = EventLogWindow.min_size[1]
+        if self.size != (event.x, event.y):
+            self.size = (event.x, event.y)
+        self.text.rect.width = event.x - 20
+        self.text.rect.height = event.y
+
+class TimeRecordWindow(fantas.Window):
+    """ 时间记录窗口类。 """
+
+    time_category = {
+        "Event": "事件处理",
+        "PreRender": "预渲染",
+        "Render": "渲染",
+        "Debug": "调试",
+        "Idle": "空闲",
+    }
+    for key in time_category.keys():
+        Lpf.flit(f"{key}Time", 0, 0.05, 5)
+        Lpf.flit(f"{key}Ratio", 0, 0.05, 5)
+    Lpf.flit("FPS", 0, 0.05, 5)
+    fantas.colors.load("#e74c3c", "Event_legend_color")
+    fantas.colors.load("#9b59b6", "PreRender_legend_color")
+    fantas.colors.load("#f1c40f", "Render_legend_color")
+    fantas.colors.load("#7d7d7d", "Debug_legend_color")
+    fantas.colors.load("#2ecc71", "Idle_legend_color")
+
+    min_width  = 400
+    fix_height = 200
+
+    def __init__(self):
+        super().__init__(
+            fantas.WindowConfig(
+                title=f"{windows_title} | 时间记录",
+                window_size=(TimeRecordWindow.min_width, TimeRecordWindow.fix_height),
+                window_position=(left_offset, top_offset),
+                resizable=True,
+                mouse_focus=False,
+                input_focus=False,
+                allow_high_dpi=True
+            )
         )
-        parent_ui.append(self.box)
-        self.surface_label = fantas.SurfaceLabel(
+
+        self.background = fantas.ColorBackground(fantas.colors.get("debug_bg"))
+        self.root_ui.append(self.background)
+
+        self.fps_text = fantas.TextLine(
+            text="FPS: 0.0",
+            style=fantas.DEFAULTTEXTSTYLE,
+            origin=(8, 29),
+        )
+        self.background.append(self.fps_text)
+
+        self.legend_text = fantas.Text(
+            style=fantas.DEFAULTTEXTSTYLE,
+            line_spacing=1,
+            rect=fantas.Rect(50, 44, 100, 150),
+            align_mode=fantas.AlignMode.LEFTRIGHT
+        )
+        text = ""
+        for i, (key, desc) in enumerate(TimeRecordWindow.time_category.items()):
+            legend_color = fantas.colors.get(f"{key}_legend_color")
+            legend = fantas.Label(
+                bgcolor=legend_color,
+                fgcolor=fantas.colors.get("debug_fg"),
+                rect=fantas.Rect(10, 50 + i*30, 20, 20),
+                border_width=2,
+            )
+            self.background.append(legend)
+            text += f"{desc}\n"
+        self.legend_text.text = text.strip()
+        self.background.append(self.legend_text)
+        self.times = {key: 0.0 for key in TimeRecordWindow.time_category.keys()}
+        self.time_text = fantas.Text(
+            text='',
+            style=fantas.DEFAULTTEXTSTYLE,
+            line_spacing=1,
+            rect=fantas.Rect(170, 44, 100, 150),
+        )
+        self.background.append(self.time_text)
+        self.ratios = {key: 0.0 for key in TimeRecordWindow.time_category.keys()}
+        self.time_ratio_bars = {}
+        for i, key in enumerate(TimeRecordWindow.time_category.keys()):
+            bar1 = fantas.Label(
+                bgcolor=fantas.colors.get(f"{key}_legend_color"),
+                rect=fantas.Rect(100, 10, 100, 20),
+            )
+            self.background.append(bar1)
+            bar2 = fantas.Label(
+                bgcolor=fantas.colors.get(f"{key}_legend_color"),
+                rect=fantas.Rect(260, 50 + i*30,  self.size[0] - 270, 20),
+            )
+            self.background.append(bar2)
+            self.time_ratio_bars[key] = (bar1, bar2)
+        self.add_event_listener(fantas.WINDOWRESIZED, self.root_ui, True, self.handle_WINDOWRESIZED_event)
+    
+    def update_fps(self, fps: float):
+        """
+        更新帧率显示。
+        Args:
+            fps (float): 当前帧率值。
+        """
+        self.fps_text.text = f"FPS: {Lpf.flit("FPS", fps):.2f}"
+    
+    def update_time_records(self, time_dict: dict[str, int]):
+        """
+        更新时间记录显示。
+        Args:
+            time_dict (dict[str, int]): 包含时间记录的字典，单位ns。
+        """
+        total_time = sum(time_dict.values())
+        self.update_fps(1e9 / total_time if total_time > 0 else 0.0)
+        for key, time in time_dict.items():
+            self.times[key] = Lpf.flit(f"{key}Time", time / 1e6)    # 转换为毫秒
+            self.ratios[key] = Lpf.flit(f"{key}Ratio", time / total_time if total_time > 0 else 0.0)
+        self.time_text.text = '\n'.join([f"{time:.2f} ms" for time in self.times.values()])
+        x = 120
+        width = self.size[0] - x - 10
+        for key, bars in self.time_ratio_bars.items():
+            bars[0].rect.left = x
+            bars[0].rect.width = round(width * self.ratios[key])
+            bars[1].rect.width = self.ratios[key] * (self.size[0] - 270)
+            x += bars[0].rect.width
+        self.time_ratio_bars["Idle"][0].rect.width += self.size[0] - 10 - x    # 修正舍入误差
+
+    def handle_WINDOWRESIZED_event(self, event: fantas.Event):
+        """
+        处理窗口大小改变事件。
+        Args:
+            event (fantas.Event): 窗口大小改变事件对象。
+        """
+        if event.x < TimeRecordWindow.min_width:
+            event.x = TimeRecordWindow.min_width
+        if self.size != (event.x, TimeRecordWindow.fix_height):
+            self.size = (event.x, TimeRecordWindow.fix_height)
+
+class MouseMagnifyWindow(fantas.Window):
+    """ 鼠标放大镜窗口类。 """
+    def __init__(self):
+        super().__init__(
+            fantas.WindowConfig(
+                title=f"{windows_title} | 鼠标放大镜",
+                window_size=(256, 320),
+                window_position=(left_offset, top_offset),
+                mouse_focus=False,
+                input_focus=False,
+                allow_high_dpi=True
+            )
+        )
+
+        self.background = fantas.ColorBackground(fantas.colors.get("debug_bg"))
+        self.root_ui.append(self.background)
+
+        self.ratio = 8
+        self.ratio_text = fantas.TextLine(
+            text=f"放大倍数: {self.ratio}x",
+            style=fantas.DEFAULTTEXTSTYLE,
+            origin=(40, 40),
+        )
+        self.background.append(self.ratio_text)
+
+        self.mouse_shot_label = fantas.SurfaceLabel(
             surface=fantas.Surface((32, 32)),
-            rect=fantas.Rect(0, 0, 128, 128),
+            rect=fantas.Rect(0, 0, 256, 256),
             fill_mode=fantas.FillMode.SCALE,
         )
-        self.box.append(self.surface_label)
+        self.mouse_shot_label.rect.bottom = self.size[1]
+        self.background.append(self.mouse_shot_label)
+
         self.cursor = fantas.Label(
             bgcolor=None,
-            rect=fantas.Rect(62, 62, 4, 4),
-            border_width=1,
+            rect=fantas.Rect(0, 0, self.ratio, self.ratio),
+            border_width=1
         )
-        self.surface_label.append(self.cursor)
+        self.mouse_shot_label.append(self.cursor)
+        self.cursor.rect.center = self.mouse_shot_label.rect.width / 2, self.mouse_shot_label.rect.height / 2
+        self.cursor_color_label = fantas.Label(
+            fgcolor=fantas.colors.get("debug_fg"),
+            rect=fantas.Rect(0, 0, 48, 48),
+            border_width=2,
+        )
+        self.cursor_color_label.rect.midright = (self.size[0] - 10, 32)
+        self.background.append(self.cursor_color_label)
 
-    def update_surface(self, surface_bytes: str):
+    def update_ratio(self, ratio: int):
+        """
+        更新放大倍数显示。
+        Args:
+            ratio (int): 当前放大倍数值。
+        """
+        self.ratio = ratio
+        self.ratio_text.text = f"放大倍数: {self.ratio}x"
+    
+    def update_mouse_shot(self, surface_bytes: str):
         """
         更新鼠标截图 Surface。
         Args:
             surface_bytes (str): 编码后的 Surface 字节数据字符串。
         """
-        self.surface_label.surface.get_buffer().write(b64decode(surface_bytes[4:]))
+        self.mouse_shot_label.surface.get_buffer().write(b64decode(surface_bytes[4:]))
         x = int(surface_bytes[0:2])
         y = int(surface_bytes[2:4])
-        self.cursor.rect.left = x * 4
-        self.cursor.rect.top  = y * 4
-        self.cursor.fgcolor = fantas.Color(255, 255, 255) - self.surface_label.surface.get_at((x, y))
+        self.cursor.rect.left = x * self.ratio
+        self.cursor.rect.top  = y * self.ratio
+        cursor_color = self.mouse_shot_label.surface.get_at((x, y))
+        self.cursor.fgcolor = fantas.get_distinct_blackorwhite(cursor_color)
+        self.cursor_color_label.bgcolor = cursor_color
 
-class DebugWindow(fantas.Window):
+def read_debug_command():
     """
-    调试窗口类，用于显示调试信息。
+    从标准输入读取调试命令并放入队列。
     """
-    def __init__(self, window_config):
-        super().__init__(window_config)
-        self.command_queue = Queue()    # 用于接收调试命令的队列
-        # 启动后台线程读取标准输入
-        threading.Thread(target=self.read_debug_command, daemon=True).start()
-        # 注册接收调试命令事件的处理器
-        self.add_event_listener(RECEIVEDDEBUGCOMMAND, self.root_ui, True, self.handle_received_debug_command_event)
-        # 背景颜色
-        self.background = fantas.ColorBackground(fantas.Color("#000000"))
-        self.append(self.background)
-        # 帧计时器
-        self.frame_timer = FrameTimer(window_config.window_size[0] - 20, 40, self.background)
-        self.frame_timer.box.rect.topleft = (10, 10)
-        self.frame_timer.legend_box.legend_box.rect.topleft = (10, self.frame_timer.box.rect.bottom + 13)
-        # 鼠标图像
-        self.mouse_surface = MouseSurface(self.background)
-        self.mouse_surface.box.rect.topright = (window_config.window_size[0] - 7, self.frame_timer.box.rect.bottom + 16)
-        # 事件日志框
-        self.event_log_box = EventLogBox(self.mouse_surface.box.rect.left - self.frame_timer.legend_box.legend_box.rect.right - 23, self.frame_timer.legend_box.legend_box.rect.height, self.background)
-        self.event_log_box.box.rect.topleft = (self.frame_timer.legend_box.legend_box.rect.right + 13, self.frame_timer.box.rect.bottom + 13)
+    fantas.time.delay(100)
+    stdin_fd = sys.stdin.fileno()
 
-    def read_debug_command(self):
-        """
-        从标准输入读取调试命令并放入队列。
-        """
-        for line in iter(sys.stdin.readline, ''):
-            self.command_queue.put(line.rstrip('\n'))
-            fantas.event.post(fantas.Event(RECEIVEDDEBUGCOMMAND))
+    while debug_windows.running:
+        try:
+            readable, _, _ = select.select([stdin_fd], [], [], 0.1)
 
-    def write_debug_output(self, msg: str):
-        """
-        写入调试输出信息到标准输出。
-        Args:
-            msg (str): 要写入的调试信息字符串。
-        """
-        print(msg, flush=True)
+            if stdin_fd in readable:
+                # 有输入数据时，才执行 readline 读取（不会阻塞）
+                line = sys.stdin.readline()
+                if not line:    # 检测到 stdin 关闭（主程序退出时）
+                    break
+                # 放入命令队列
+                if command_queue.empty():
+                    command_queue.put(line.rstrip('\n'))
+                    fantas.event.post(fantas.Event(fantas.DEBUGRECEIVED))
+                else:
+                    command_queue.put(line.rstrip('\n'))
+        except Exception as e:
+            if debug_windows.running:
+                print(f"读取调试命令异常: {e}", flush=True)
+            break
 
-    def handle_received_debug_command_event(self, event: fantas.Event):
-        """
-        处理接收到的调试命令事件。
-        Args:
-            event (fantas.Event): 接收到的调试命令事件对象。
-        """
-        cmd = self.command_queue.get()
+# 时间记录拆分正则表达式
+split_time_records = re.compile(rf'([^:{re.escape("\x1f")}]+):(-?\d+)')
+
+def handle_debug_command(prompt: str, command: str):
+    """
+    处理调试命令。
+    Args:
+        prompt (str): 命令提示符。
+        command (str): 调试命令字符串。
+    """
+    if fantas.DebugFlag.EVENTLOG in debug_flags and prompt == "EventLog":
+        event_log_window.log_event(command)
+    elif fantas.DebugFlag.TIMERECORD in debug_flags and prompt == "TimeRecord":
+        time_record_window.update_time_records({key.strip(): int(value) for key, value in re.findall(split_time_records, command)})
+    elif fantas.DebugFlag.MOUSEMAGNIFY in debug_flags and prompt == "MouseMagnify":
+        mouse_magnify_window.update_mouse_shot(command)
+
+# 调试命令拆分正则表达式
+split_prompt_command_re = re.compile(r"^\[(.*?)\]\s+(.*)$")
+
+def handle_received_debug_command_event(event: fantas.Event):
+    """
+    处理接收到的调试命令事件。
+    Args:
+        event (fantas.Event): 接收到的调试命令事件对象。
+    """
+    while not command_queue.empty():
+        cmd = command_queue.get()
         match = split_prompt_command_re.match(cmd)
         if match:
             prompt = match.group(1)
             command = match.group(2)
-            self.handle_debug_command(prompt, command)
+            handle_debug_command(prompt, command)
+    return True
 
-    def handle_debug_command(self, prompt: str, command: str):
-        """
-        处理调试命令。
-        Args:
-            prompt (str): 命令提示符。
-            command (str): 调试命令字符串。
-        """
-        if prompt == "Debug":
-            pass
-        elif prompt == "EventLog":
-            self.event_log_box.log_event(command)
-        elif prompt == "FrameTime":
-            self.frame_timer.show_frame_time(list(map(float, command[1:-1].split(', '))))
-        elif prompt == "MouseSurface":
-            self.mouse_surface.update_surface(command)
+# 创建调试命令队列
+command_queue = Queue(maxsize=1024)
 
-debugwindow_config = fantas.WindowConfig(
-    title=f"{sys.argv[1]} | 调试窗口",
-    window_size=(int(sys.argv[4]), int(sys.argv[5])),
-    window_position=(int(sys.argv[2]), int(sys.argv[3])),
-    mouse_focus=False,
-    input_focus=False,
-)
-debug_window = DebugWindow(debugwindow_config)
-debug_window.opacity = float(sys.argv[6])
+# 存储所有调试窗口的列表
+windows = []
 
-debug_window.mainloop()
+windows_title = sys.argv[2]    # 调试窗口标题
+left_offset = 0    # 窗口左侧偏移位置
+top_offset  = 0    # 窗口顶部偏移位置
+max_bottom = 0     # 窗口最大底部位置
+screen_size = fantas.display.get_desktop_sizes()[0]
+
+# 如果启用了事件日志调试标志，则创建事件日志窗口
+if fantas.DebugFlag.EVENTLOG in debug_flags:
+    event_log_window = EventLogWindow()
+    windows.append(event_log_window)
+    if screen_size[0] - left_offset < event_log_window.size[0]:
+        left_offset = 0
+        top_offset = max_bottom
+    left_offset += event_log_window.size[0]
+    max_bottom = max(max_bottom, top_offset + event_log_window.size[1])
+
+# 如果启用了时间记录调试标志，则创建时间记录窗口
+if fantas.DebugFlag.TIMERECORD in debug_flags:
+    time_record_window = TimeRecordWindow()
+    windows.append(time_record_window)
+    if screen_size[0] - left_offset < time_record_window.size[0]:
+        left_offset = 0
+        top_offset = max_bottom
+    left_offset += time_record_window.size[0]
+    max_bottom = max(max_bottom, top_offset + time_record_window.size[1])
+
+# 如果启用了鼠标放大调试标志，则创建鼠标放大窗口
+if fantas.DebugFlag.MOUSEMAGNIFY in debug_flags:
+    mouse_magnify_window = MouseMagnifyWindow()
+    windows.append(mouse_magnify_window)
+    if screen_size[0] - left_offset < mouse_magnify_window.size[0]:
+        left_offset = 0
+        top_offset = max_bottom
+    left_offset += mouse_magnify_window.size[0]
+    max_bottom = max(max_bottom, top_offset + mouse_magnify_window.size[1])
+
+# 注册接收调试命令事件的处理器
+for window in windows:
+    window.add_event_listener(fantas.DEBUGRECEIVED, window.root_ui, True, handle_received_debug_command_event)
+
+# 创建调试窗口
+debug_windows = fantas.MultiWindow(*windows)
+
+# 启动后台线程读取标准输入
+debug_thread = threading.Thread(target=read_debug_command)
+debug_thread.start()
+
+# 运行调试窗口主循环
+debug_windows.mainloops()
+
+# 等待调试线程结束
+debug_thread.join()

@@ -149,6 +149,7 @@ TextRenderCommand(
     line_spacing: float            = 4.0
     rect        : fantas.RectLike  = fantas.Rect(0, 0, 100, 0)
     align_mode  : fantas.AlignMode = fantas.AlignMode.LEFT
+    reverse     : bool             = False
 ) -> TextRenderCommand
 ```
 
@@ -158,6 +159,7 @@ TextRenderCommand(
 - **line_spacing (float)**: 行间距
 - **rect (fantas.RectLike)**: 渲染区域
 - **align_mode (fantas.AlignMode)**: 对齐模式
+- **reverse (bool)**: 是否反向渲染（从下到上）
 
 ## fantas.QuarterCircleRenderCommand
 

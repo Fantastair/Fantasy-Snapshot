@@ -68,9 +68,11 @@ pygame.freetype.init(cache_size=1024)
 
 # 导入 Pygame 的子模块以简化调用链
 import pygame.time      as time
+import pygame.draw      as draw
 import pygame.event     as event
 import pygame.mouse     as mouse
-import pygame.draw      as draw
+import pygame.image     as image
+import pygame.display   as display
 import pygame.transform as transform
 
 # 导入 fantas 包的各个子模块
@@ -80,14 +82,14 @@ from fantas.debug         import *    # 调试功能
 from fantas.font          import *    # 字体支持
 from fantas.renderer      import *    # 渲染支持
 from fantas.event_handler import *    # 事件处理
+from fantas.color         import *    # 颜色支持
 from fantas.nodebase      import *    # 节点基类
 from fantas.ui            import *    # UI 基类
 from fantas.background_ui import *    # 背景 UI
 from fantas.label_ui      import *    # 标签 UI
 from fantas.text_ui       import *    # 文字 UI
-
-# 类型注解支持
-from fantas.fantas_typing import *
+from fantas.fantas_typing import *    # 类型定义
+from fantas.resource      import *    # 资源管理
 
 # 先禁用所有事件，然后再根据需要启用特定事件
 event.set_blocked(None)

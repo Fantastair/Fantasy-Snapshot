@@ -55,6 +55,7 @@ __all__ = [
     "WINDOWFOCUSLOST",
     "WINDOWFOCUSGAINED",
     "WINDOWDISPLAYCHANGED",
+    "DEBUGRECEIVED",
 
     "BUTTON_X1",
     "BUTTON_X2",
@@ -151,7 +152,6 @@ event_category_dict: dict[fantas.EventType, EventCategory] = {
 def custom_event(event_category: EventCategory = EventCategory.USER) -> fantas.EventType:
     """
     生成一个自定义事件类型 id。
-    注意，fantas 默认禁用不需要的事件，创建自定义事件后需要手动启用该事件类型才能接收此事件。
     Args:
         event_category (fantas.EventCategory): 事件分类，默认为 USER。
     Returns:
@@ -159,6 +159,7 @@ def custom_event(event_category: EventCategory = EventCategory.USER) -> fantas.E
     """
     t = fantas.event.custom_type()
     event_category_dict[t] = event_category
+    fantas.event.set_allowed(t)
     return t
 
 def get_event_category(event_type: fantas.EventType) -> EventCategory:
@@ -172,6 +173,8 @@ def get_event_category(event_type: fantas.EventType) -> EventCategory:
     return event_category_dict.get(event_type, EventCategory.NONE)
 
 # 自定义事件
-MOUSEENTERED = custom_event(EventCategory.MOUSE)    # 鼠标进入事件
-MOUSELEAVED  = custom_event(EventCategory.MOUSE)    # 鼠标离开事件
-MOUSECLICKED = custom_event(EventCategory.MOUSE)    # 有效单击事件
+MOUSEENTERED  = custom_event(EventCategory.MOUSE)    # 鼠标进入事件
+MOUSELEAVED   = custom_event(EventCategory.MOUSE)    # 鼠标离开事件
+MOUSECLICKED  = custom_event(EventCategory.MOUSE)    # 有效单击事件
+DEBUGRECEIVED = custom_event()                       # 接收到调试信息事件
+CALLREQUEST   = custom_event()                       # 调用请求事件
