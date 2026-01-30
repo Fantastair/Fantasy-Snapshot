@@ -359,7 +359,7 @@ class TextRenderCommand(RenderCommand):
         # 渲染原点
         origin_x = rect.left
         min_y = rect.top + font.get_sized_ascender(size)
-        max_y = rect.bottom - height + font.get_sized_ascender(size)
+        max_y = rect.bottom + font.get_sized_descender(size)
         # 如果反向渲染
         if self.reverse:
             for text, _ in reversed(wraps):
@@ -395,7 +395,7 @@ class TextRenderCommand(RenderCommand):
         ar.clear()
         # 渲染原点
         min_y = rect.top + font.get_sized_ascender(size)
-        max_y = rect.bottom - font.get_sized_descender(size)
+        max_y = rect.bottom + font.get_sized_descender(size)
         # 如果反向渲染
         if self.reverse:
             for text, text_width in reversed(wraps):
@@ -431,7 +431,7 @@ class TextRenderCommand(RenderCommand):
         ar.clear()
         # 渲染原点
         min_y = rect.top + font.get_sized_ascender(size)
-        max_y = rect.bottom - font.get_sized_descender(size)
+        max_y = rect.bottom + font.get_sized_descender(size)
         # 如果反向渲染
         if self.reverse:
             for text, text_width in reversed(wraps):
