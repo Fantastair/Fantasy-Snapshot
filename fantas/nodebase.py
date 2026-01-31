@@ -9,7 +9,7 @@ __all__ = (
 @dataclass(slots=True)
 class NodeBase:
     """ 树形节点基类，数据域由子类实现。 """
-    father  : NodeBase | None = field(default=None, init=False)            # 指向父节点 
+    father  : NodeBase | None = field(default=None, init=False)            # 指向父节点
     children: list[NodeBase]  = field(default_factory=list, init=False)    # 存储孩子节点，有序
     pass_path_cache: list[NodeBase] | None = field(default=None, init=False, repr=False)  # 传递路径缓存
 

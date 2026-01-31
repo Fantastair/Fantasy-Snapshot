@@ -177,4 +177,3 @@ MOUSEENTERED  = custom_event(EventCategory.MOUSE)    # 鼠标进入事件
 MOUSELEAVED   = custom_event(EventCategory.MOUSE)    # 鼠标离开事件
 MOUSECLICKED  = custom_event(EventCategory.MOUSE)    # 有效单击事件
 DEBUGRECEIVED = custom_event()                       # 接收到调试信息事件
-CALLREQUEST   = custom_event()                       # 调用请求事件

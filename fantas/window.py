@@ -81,9 +81,12 @@ class Window(PygameWindow):
         进入窗口的主事件循环，直到窗口关闭。
         """
         # 简化引用
-        clock = self.clock
-        event_handler = self.event_handler
-        renderer = self.renderer
+        tick = self.clock.tick
+        get = fantas.event.get
+        handle_event = self.event_handler.handle_event
+        run_framefuncs = fantas.run_framefuncs
+        pre_render = self.renderer.pre_render
+        render = self.renderer.render
         root_ui = self.root_ui
         screen = self.screen
         flip = self.flip
@@ -94,14 +97,16 @@ class Window(PygameWindow):
         # 主循环
         while self.running:
             # 限制帧率
-            clock.tick(self.fps)
+            tick(self.fps)
             # 处理事件
-            for event in fantas.event.get():
-                event_handler.handle_event(event)
+            for event in get():
+                handle_event(event)
+            # 运行帧函数
+            run_framefuncs()
             # 生成渲染命令
-            renderer.pre_render(root_ui)
+            pre_render(root_ui)
             # 渲染窗口
-            renderer.render(screen)
+            render(screen)
             # 更新窗口显示
             flip()
         self.destroy()
@@ -111,15 +116,19 @@ class Window(PygameWindow):
         以调试模式进入窗口的主事件循环，直到窗口关闭。
         """
         # 简化引用
-        clock = self.clock
-        event_handler = self.event_handler
-        renderer = self.renderer
+        tick = self.clock.tick
+        get = fantas.event.get
+        handle_event = self.event_handler.handle_event
+        run_framefuncs = fantas.run_framefuncs
+        pre_render = self.renderer.pre_render
+        render = self.renderer.render
         root_ui = self.root_ui
         screen = self.screen
         flip = self.flip
         EVENTLOG = fantas.DebugFlag.EVENTLOG
         TIMERECORD = fantas.DebugFlag.TIMERECORD
-        MOUSEMAGNIFY = fantas.DebugFlag.MOUSEMAGNIFY
+        DEBUGRECEIVED = fantas.DEBUGRECEIVED
+        send_debug_data = fantas.Debug.send_debug_data
         # 清空事件队列
         fantas.event.clear()
         # 预生成传递路径缓存
@@ -129,55 +138,63 @@ class Window(PygameWindow):
         # 监听调试输出事件
         self.add_event_listener(fantas.DEBUGRECEIVED, root_ui, True, self.handle_debug_received_event)
         # 监听鼠标移动事件
-        if MOUSEMAGNIFY in fantas.Debug.debug_flag:
+        if fantas.DebugFlag.MOUSEMAGNIFY in fantas.Debug.debug_flag:
             self.add_event_listener(fantas.MOUSEMOTION, root_ui, True, self.debug_send_mouse_surface)
         # 创建调试计时器
         self.debug_timer = debug_timer = DebugTimer()
+        record = debug_timer.record
         # === 调试 ===
 
         # 主循环
         while self.running:
             # 限制帧率
-            clock.tick(self.fps)
+            tick(self.fps)
 
             # === 调试 ===
-            debug_timer.record("Idle")
+            record("Idle")
             # === 调试 ===
 
             # 处理事件
-            for event in fantas.event.get():
+            for event in get():
 
                 # === 调试 ===
                 # 发送事件信息到调试窗口
-                debug_timer.record("Event")
-                if fantas.DebugFlag.EVENTLOG in fantas.Debug.debug_flag and event.type != fantas.DEBUGRECEIVED:
-                    fantas.Debug.send_debug_data(str(event), prompt="EventLog")
-                debug_timer.record("Debug")
+                record("Event")
+                if EVENTLOG in fantas.Debug.debug_flag and event.type != DEBUGRECEIVED:
+                    send_debug_data(str(event), prompt="EventLog")
+                record("Debug")
                 # === 调试 ===
 
-                event_handler.handle_event(event)
+                handle_event(event)
 
             # === 调试 ===
-            debug_timer.record("Event")
+            record("Event")
+            # === 调试 ===
+
+            # 运行帧函数
+            run_framefuncs()
+
+            # === 调试 ===
+            record("FrameFunc")
             # === 调试 ===
 
             # 生成渲染命令
-            renderer.pre_render(root_ui)
+            pre_render(root_ui)
 
             # === 调试 ===
-            debug_timer.record("PreRender")
+            record("PreRender")
             # === 调试 ===
 
             # 渲染窗口
-            renderer.render(screen)
+            render(screen)
             # 更新窗口显示
             flip()
 
             # === 调试 ===
-            debug_timer.record("Render")
+            record("Render")
             # 发送计时记录到调试窗口
-            if fantas.DebugFlag.TIMERECORD in fantas.Debug.debug_flag:
-                fantas.Debug.send_debug_data(debug_timer.time_records, prompt="TimeRecord")
+            if TIMERECORD in fantas.Debug.debug_flag:
+                send_debug_data(debug_timer.time_records, prompt="TimeRecord")
             # 清空计时记录
             debug_timer.clear()
             # === 调试 ===
@@ -193,7 +210,10 @@ class Window(PygameWindow):
         self.debug_timer.record("Event")
         while not fantas.Debug.queue.empty():
             data = fantas.Debug.queue.get()
-            print(f"[{data[0]}] {data[1:]}")
+            if data[0] == "CloseDebugWindow":
+                fantas.Debug.delete_debug_flag(data[1])
+            else:
+                print(f"[{data[0]}] {data[1:]}")
         self.debug_timer.record("Debug")
 
     def debug_send_mouse_surface(self, event: fantas.Event):
@@ -274,7 +294,7 @@ class MultiWindow:
         self.pop(window).destroy()
         if not self.windows:
             self.running = False
-    
+
     def auto_place_windows(self, padding=0):
         """
         自动布局所有管理的窗口，尽量减少重叠面积。
@@ -300,9 +320,10 @@ class MultiWindow:
         进入所有管理窗口的主事件循环，直到所有窗口关闭。
         """
         # 简化引用
-        clock = self.clock
+        tick = self.clock.tick
+        get = fantas.event.get
         windows = self.windows
-        get_window = self.get_window
+        run_framefuncs = fantas.run_framefuncs
         # 清空事件队列
         fantas.event.clear()
         for window in windows.values():
@@ -313,9 +334,9 @@ class MultiWindow:
         # 主循环
         while self.running:
             # 限制帧率
-            clock.tick(self.fps)
+            tick(self.fps)
             # 处理事件
-            for event in fantas.event.get():
+            for event in get():
                 # 如果事件关联到特定窗口，则只传递给该窗口，否则传递给所有窗口
                 # print(event, flush=True)
                 if hasattr(event, 'window'):
@@ -327,6 +348,8 @@ class MultiWindow:
                 else:
                     for window in windows.values():
                         window.event_handler.handle_event(event)
+            # 运行帧函数
+            run_framefuncs()
             # 渲染所有窗口
             for window in windows.values():
                 # 生成渲染命令
@@ -346,9 +369,15 @@ class MultiWindow:
         # === 调试 ===
 
         # 简化引用
-        clock = self.clock
+        tick = self.clock.tick
+        get = fantas.event.get
         windows = self.windows
-        get_window = self.get_window
+        run_framefuncs = fantas.run_framefuncs
+        record = debug_timer.record
+        EVENTLOG = fantas.DebugFlag.EVENTLOG
+        TIMERECORD = fantas.DebugFlag.TIMERECORD
+        DEBUGRECEIVED = fantas.DEBUGRECEIVED
+        send_debug_data = fantas.Debug.send_debug_data
         # 清空事件队列
         fantas.event.clear()
         for window in windows.values():
@@ -363,7 +392,8 @@ class MultiWindow:
             # 监听调试输出事件
             window.add_event_listener(fantas.DEBUGRECEIVED, window.root_ui, True, window.read_debug_output)
             # 监听鼠标移动事件
-            window.add_event_listener(fantas.MOUSEMOTION, window.root_ui, True, window.debug_send_mouse_surface)
+            if fantas.DebugFlag.MOUSEMAGNIFY in fantas.Debug.debug_flag:
+                window.add_event_listener(fantas.MOUSEMOTION, window.root_ui, True, window.debug_send_mouse_surface)
             # === 调试 ===
         # === 调试 ===
         # 重置调试计时器
@@ -373,21 +403,21 @@ class MultiWindow:
         # 主循环
         while windows:
             # 限制帧率
-            clock.tick(self.fps)
+            tick(self.fps)
 
             # === 调试 ===
-            debug_timer.record("Idle")
+            record("Idle")
             # === 调试 ===
 
             # 处理事件
-            for event in fantas.event.get():
+            for event in get():
 
                 # === 调试 ===
                 # 发送事件信息到调试窗口
-                debug_timer.record("Event")
-                if fantas.DebugFlag.EVENTLOG in fantas.Debug.debug_flag and event.type != fantas.DEBUGRECEIVED:
-                    fantas.Debug.send_debug_data(str(event), "EventLog")
-                debug_timer.record("Debug")
+                record("Event")
+                if EVENTLOG in fantas.Debug.debug_flag and event.type != DEBUGRECEIVED:
+                    send_debug_data(str(event), "EventLog")
+                record("Debug")
                 # === 调试 ===
 
                 # 如果事件关联到特定窗口，则只传递给该窗口，否则传递给所有窗口
@@ -402,7 +432,14 @@ class MultiWindow:
                         window.event_handler.handle_event(event)
 
             # === 调试 ===
-            debug_timer.record("Event")
+            record("Event")
+            # === 调试 ===
+
+            # 运行帧函数
+            run_framefuncs()
+
+            # === 调试 ===
+            record("FrameFunc")
             # === 调试 ===
 
             # 渲染所有窗口
@@ -411,7 +448,7 @@ class MultiWindow:
                 window.renderer.pre_render(window.root_ui)
 
                 # === 调试 ===
-                debug_timer.record("PreRender")
+                record("PreRender")
                 # === 调试 ===
 
                 # 渲染窗口
@@ -420,13 +457,13 @@ class MultiWindow:
                 window.flip()
 
                 # === 调试 ===
-                debug_timer.record("Render")
+                record("Render")
                 # === 调试 ===
 
             # === 调试 ===
             # 发送计时记录到调试窗口
-            if fantas.DebugFlag.TIMERECORD in fantas.Debug.debug_flag:
-                fantas.Debug.send_debug_data(debug_timer.time_records, "TimeRecord")
+            if TIMERECORD in fantas.Debug.debug_flag:
+                send_debug_data(debug_timer.time_records, "TimeRecord")
             # 清空计时记录
             debug_timer.clear()
             # === 调试 ===

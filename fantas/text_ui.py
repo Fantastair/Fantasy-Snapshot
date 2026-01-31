@@ -58,7 +58,7 @@ class Text(fantas.UI):
     def __post_init__(self):
         """ 初始化 ColorText 实例 """
         self.command = fantas.TextRenderCommand(creator=self)
-    
+
     def create_render_commands(self, offset: fantas.Point = (0, 0)):
         """
         创建渲染命令列表。

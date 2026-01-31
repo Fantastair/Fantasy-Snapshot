@@ -40,8 +40,7 @@ class Debug:
             windows_title (str)   : 调试窗口标题。
         """
         # 先关闭已有的调试窗口
-        if Debug.process is not None:
-            Debug.close_debug()
+        Debug.close_debug()
         # 启动后台线程读取子进程输出
         Debug.start_read_thread()
         # 设置子进程的环境变量，确保可以找到 fantas 包
@@ -68,8 +67,6 @@ class Debug:
             if line:
                 # 获取调试端口号
                 Debug.set_sendto_port(int(line.rstrip('\n')))
-                print(f"[Debug] 调试窗口已启动，端口号: {Debug.debug_port}")
-                print(f"[Debug] 本地 UDP 端口号: {fantas.get_socket_port(Debug.udp_socket)}")
                 # 记录当前调试选项标志
                 Debug.debug_flag = flag
         except FileNotFoundError as e:
@@ -78,10 +75,12 @@ class Debug:
     @staticmethod
     def close_debug():
         """ 关闭调试窗口子进程。 """
-        Debug.process.kill()
-        Debug.process.wait()
-        Debug.reading = False
+        if Debug.process is not None:
+            Debug.process.kill()
+            Debug.process.wait()
+            Debug.reading = False
 
+    @staticmethod
     def set_sendto_port(port: int):
         """
         设置调试窗口进程的接收端口号。
@@ -120,4 +119,23 @@ class Debug:
         """
         Debug.reading = True
         threading.Thread(target=Debug.read_debug_data, daemon=True).start()
+
+    @staticmethod
+    def add_debug_flag(flag: DebugFlag):
+        """
+        添加指定的调试选项标志。
+        Args:
+            flag (DebugFlag): 要添加的调试选项标志。
+        """
+        Debug.debug_flag |= flag
+
+    @staticmethod
+    def delete_debug_flag(flag: DebugFlag):
+        """
+        删除指定的调试选项标志。
+        Args:
+            flag (DebugFlag): 要删除的调试选项标志。
+        """
+        Debug.debug_flag &= ~flag
+
 atexit.register(Debug.close_debug)

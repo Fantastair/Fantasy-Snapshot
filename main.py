@@ -157,5 +157,5 @@ background.append(
 # window.mainloop()
 
 # 调试模式
-fantas.Debug.start_debug(windows_title=window.title)
+fantas.Debug.start_debug(flag=fantas.DebugFlag.TIMERECORD, windows_title=window.title)
 window.mainloop_debug()

@@ -23,12 +23,12 @@ class LabelRenderCommands:
     left_border       : ColorFillCommand              # 左边框命令
     right_border      : ColorFillCommand              # 右边框命令
     bottom_border     : ColorFillCommand              # 下边框命令
-    
+
     topleft           : QuarterCircleRenderCommand    # 左上角圆角命令
     topright          : QuarterCircleRenderCommand    # 右上角圆角命令
     bottomleft        : QuarterCircleRenderCommand    # 左下角圆角命令
     bottomright       : QuarterCircleRenderCommand    # 右下角圆角命令
-    
+
     topleft_border    : QuarterCircleRenderCommand    # 左上角圆角边框命令
     topright_border   : QuarterCircleRenderCommand    # 右上角圆角边框命令
     bottomleft_border : QuarterCircleRenderCommand    # 左下角圆角边框命令

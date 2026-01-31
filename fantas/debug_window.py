@@ -86,6 +86,7 @@ class EventLogWindow(fantas.Window):
 
         self.lines: deque[str] = deque(maxlen=64)
         self.add_event_listener(fantas.WINDOWRESIZED, self.root_ui, True, self.handle_WINDOWRESIZED_event)
+        self.add_event_listener(fantas.WINDOWCLOSE, self.root_ui, True, self.handle_WINDOWCLOSE_event)
 
     def log_event(self, event_str: str):
         """
@@ -111,11 +112,20 @@ class EventLogWindow(fantas.Window):
         self.text.rect.width = event.x - 20
         self.text.rect.height = event.y
 
+    def handle_WINDOWCLOSE_event(self, event: fantas.Event):
+        """
+        处理窗口关闭事件。
+        Args:
+            event (fantas.Event): 窗口关闭事件对象。
+        """
+        fantas.Debug.send_debug_data(fantas.DebugFlag.EVENTLOG, prompt="CloseDebugWindow")
+
 class TimeRecordWindow(fantas.Window):
     """ 时间记录窗口类。 """
 
     time_category = {
         "Event": "事件处理",
+        "FrameFunc": "帧函数",
         "PreRender": "预渲染",
         "Render": "渲染",
         "Debug": "调试",
@@ -126,13 +136,14 @@ class TimeRecordWindow(fantas.Window):
         Lpf.flit(f"{key}Ratio", 0, 0.05, 5)
     Lpf.flit("FPS", 0, 0.05, 5)
     fantas.colors.load("#e74c3c", "Event_legend_color")
+    fantas.colors.load("#3498db", "FrameFunc_legend_color")
     fantas.colors.load("#9b59b6", "PreRender_legend_color")
     fantas.colors.load("#f1c40f", "Render_legend_color")
     fantas.colors.load("#7d7d7d", "Debug_legend_color")
     fantas.colors.load("#2ecc71", "Idle_legend_color")
 
     min_width  = 400
-    fix_height = 200
+    fix_height = 230
 
     def __init__(self):
         super().__init__(
@@ -159,7 +170,7 @@ class TimeRecordWindow(fantas.Window):
 
         self.legend_text = fantas.Text(
             style=fantas.DEFAULTTEXTSTYLE,
-            rect=fantas.Rect(50, 68-fantas.DEFAULTTEXTSTYLE.font.get_sized_ascender(fantas.DEFAULTTEXTSTYLE.size), 100, 150),
+            rect=fantas.Rect(50, 68-fantas.DEFAULTTEXTSTYLE.font.get_sized_ascender(fantas.DEFAULTTEXTSTYLE.size), 100, 30 * len(TimeRecordWindow.time_category)),
             align_mode=fantas.AlignMode.LEFTRIGHT
         )
         self.legend_text.line_height = 30
@@ -181,7 +192,7 @@ class TimeRecordWindow(fantas.Window):
             text='',
             style=fantas.DEFAULTTEXTSTYLE,
             line_spacing=1,
-            rect=fantas.Rect(170, 68-fantas.DEFAULTTEXTSTYLE.font.get_sized_ascender(fantas.DEFAULTTEXTSTYLE.size), 100, 150),
+            rect=fantas.Rect(170, 68-fantas.DEFAULTTEXTSTYLE.font.get_sized_ascender(fantas.DEFAULTTEXTSTYLE.size), 100, 30 * len(TimeRecordWindow.time_category)),
         )
         self.time_text.line_height = 30
         self.background.append(self.time_text)
@@ -200,7 +211,8 @@ class TimeRecordWindow(fantas.Window):
             self.background.append(bar2)
             self.time_ratio_bars[key] = (bar1, bar2)
         self.add_event_listener(fantas.WINDOWRESIZED, self.root_ui, True, self.handle_WINDOWRESIZED_event)
-    
+        self.add_event_listener(fantas.WINDOWCLOSE, self.root_ui, True, self.handle_WINDOWCLOSE_event)
+
     def update_fps(self, fps: float):
         """
         更新帧率显示。
@@ -208,7 +220,7 @@ class TimeRecordWindow(fantas.Window):
             fps (float): 当前帧率值。
         """
         self.fps_text.text = f"FPS: {Lpf.flit("FPS", fps):.2f}"
-    
+
     def update_time_records(self, time_dict: dict[str, int]):
         """
         更新时间记录显示。
@@ -240,6 +252,14 @@ class TimeRecordWindow(fantas.Window):
             event.x = TimeRecordWindow.min_width
         if self.size != (event.x, TimeRecordWindow.fix_height):
             self.size = (event.x, TimeRecordWindow.fix_height)
+
+    def handle_WINDOWCLOSE_event(self, event: fantas.Event):
+        """
+        处理窗口关闭事件。
+        Args:
+            event (fantas.Event): 窗口关闭事件对象。
+        """
+        fantas.Debug.send_debug_data(fantas.DebugFlag.TIMERECORD, prompt="CloseDebugWindow")
 
 class MouseMagnifyWindow(fantas.Window):
     """ 鼠标放大镜窗口类。 """
@@ -289,6 +309,8 @@ class MouseMagnifyWindow(fantas.Window):
         self.cursor_color_label.rect.midright = (self.size[0] - 10, 32)
         self.background.append(self.cursor_color_label)
 
+        self.add_event_listener(fantas.WINDOWCLOSE, self.root_ui, True, self.handle_WINDOWCLOSE_event)
+
     def update_ratio(self, ratio: int):
         """
         更新放大倍数显示。
@@ -297,7 +319,7 @@ class MouseMagnifyWindow(fantas.Window):
         """
         self.ratio = ratio
         self.ratio_text.text = f"放大倍数: {self.ratio}x"
-    
+
     def update_mouse_shot(self, x: int, y: int, surface_bytes: bytes):
         """
         更新鼠标截图 Surface。
@@ -312,6 +334,14 @@ class MouseMagnifyWindow(fantas.Window):
         cursor_color = self.mouse_shot_label.surface.get_at((x, y))
         self.cursor.fgcolor = fantas.get_distinct_blackorwhite(cursor_color)
         self.cursor_color_label.bgcolor = cursor_color
+
+    def handle_WINDOWCLOSE_event(self, event: fantas.Event):
+        """
+        处理窗口关闭事件。
+        Args:
+            event (fantas.Event): 窗口关闭事件对象。
+        """
+        fantas.Debug.send_debug_data(fantas.DebugFlag.MOUSEMAGNIFY, prompt="CloseDebugWindow")
 
 def handle_debug_received_event(event: fantas.Event):
     """
