@@ -68,7 +68,7 @@ class TestSlider:
 
     def set_value(self, value: float):
         """ 设置滑块的值。 """
-        self.value = max(self.start, min(self.end, value))
+        self.value = fantas.math.clamp(value, self.start, self.end)
         ratio = (self.value - self.start) / (self.end - self.start)
         self.slider.rect.left = ratio * (self.slider_bar.rect.width - self.slider.rect.width)
         self.active_bar.rect.width = self.slider.rect.centerx - self.active_bar.rect.left
@@ -152,6 +152,20 @@ background.append(
         box_mode=fantas.BoxMode.OUTSIDE,
     )
 )
+
+l: fantas.Label = background.children[-1]
+
+a = fantas.AttrKeyFrame(obj=l.rect, attr="left", end_value=1000, map_curve=fantas.CURVE_SMOOTH)
+a.set_target_time_ms(500)
+a.start()
+
+a = fantas.AttrKeyFrame(obj=l, attr="border_width", end_value=8, map_curve=fantas.CURVE_SMOOTH)
+a.set_target_time_ms(500)
+a.start()
+
+a = fantas.ColorKeyframe(obj=l, attr="fgcolor", end_value=fantas.Color("#FF0000"), map_curve=fantas.CURVE_SMOOTH)
+a.set_target_time_ms(500)
+a.start()
 
 # 运行主循环
 # window.mainloop()

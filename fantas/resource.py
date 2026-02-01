@@ -20,10 +20,27 @@ class ResourceLoader(Generic[T]):
     _resources: dict[str, T] = field(default_factory=dict, init=False)
 
     def get(self, name: str) -> T:
-        """ 根据名称获取已加载的资源。 """
+        """
+        根据名称获取已加载的资源。
+        Args:
+            name (str): 资源名称。
+        Returns:
+            T: 已加载的资源对象。
+        Raises:
+            KeyError: 如果资源未加载则引发此异常。
+        """
         if name not in self._resources:
             raise KeyError(f"资源 '{name}' 未加载。")
         return self._resources[name]
+    
+    def set(self, name: str, resource: T):
+        """
+        手动设置资源。
+        Args:
+            name (str): 资源名称。
+            resource (T): 资源对象。
+        """
+        self._resources[name] = resource
 
 def image_convert_hook(surface: fantas.Surface) -> fantas.Surface:
     """ 图像转换钩子函数，将图像转换为与显示器兼容的格式。 """
@@ -105,4 +122,12 @@ class ColorLoader(ResourceLoader[fantas.Color]):
             name (str, optional): 资源名称，默认为 None，使用颜色字符串作为资源名称。
         """
         self._resources[name if name else color] = fantas.Color(color)
+    
+    def load_preset_colors(self):
+        """ 加载预设颜色。 """
+        from pygame import colordict
+        for name, color in colordict.THECOLORS.items():
+            self._resources[name] = fantas.Color(color)
 colors = ColorLoader()
+
+

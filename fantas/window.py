@@ -227,8 +227,8 @@ class Window(PygameWindow):
         self.debug_timer.record("Event")
         size = 32
         pos = list(event.pos)
-        pos[0] = max(0, min(self.size[0] - 1, pos[0]))
-        pos[1] = max(0, min(self.size[1] - 1, pos[1]))
+        pos[0] = fantas.math.clamp(pos[0], 0, self.size[0] - 1)
+        pos[1] = fantas.math.clamp(pos[1], 0, self.size[1] - 1)
         rect = fantas.IntRect(event.pos[0] - size // 2, event.pos[1] - size // 2, size, size)
         if rect.left < 0:
             rect.left = 0

@@ -69,6 +69,7 @@ pygame.freetype.init(cache_size=1024)
 # 导入 Pygame 的子模块以简化调用链
 import pygame.time      as time
 import pygame.draw      as draw
+import pygame.math      as math
 import pygame.event     as event
 import pygame.mouse     as mouse
 import pygame.image     as image
