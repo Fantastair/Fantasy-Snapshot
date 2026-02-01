@@ -45,7 +45,7 @@ class Font(pygame.freetype.Font):
 
     get_rect = fantas.lru_cache_typed(maxsize=2048, typed=True)(pygame.freetype.Font.get_rect)
 
-    @fantas.lru_cache_typed(maxsize=2048, typed=True)
+    @fantas.lru_cache_typed(maxsize=65536, typed=True)
     def _get_width_char_kerning(self, style_flag: fantas.TextStyleFlag, size: float, char_pair: str) -> int:
         """
         获取字距调整后的字符宽度。
@@ -58,7 +58,7 @@ class Font(pygame.freetype.Font):
         """
         return self.get_rect(char_pair, style_flag, size=size).width - self.get_rect(char_pair[0], style_flag, size=size).width
 
-    @fantas.lru_cache_typed(maxsize=256, typed=True)
+    @fantas.lru_cache_typed(maxsize=65536, typed=True)
     def get_widthes(self, style_flag: fantas.TextStyleFlag, size: float, text: str) -> tuple[int]:
         """
         获取指定样式文本的宽度度量信息。
@@ -79,7 +79,7 @@ class Font(pygame.freetype.Font):
         # 返回度量信息元组（节省缓存空间，并防篡改）
         return tuple(widthes)
 
-    @fantas.lru_cache_typed(maxsize=512, typed=True)
+    @fantas.lru_cache_typed(maxsize=65536, typed=True)
     def auto_wrap(self, style_flag: fantas.TextStyleFlag, size: float, text: str, width: int) -> tuple[tuple[str, int]]:
         """
         自动换行文本。

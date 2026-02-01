@@ -1,4 +1,5 @@
 from __future__ import annotations
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 import fantas
@@ -67,14 +68,14 @@ class Window(PygameWindow):
         self.event_handler: fantas.EventHandler = fantas.EventHandler(window=self)    # 窗口的事件处理器对象
 
         # 方便访问根 UI 元素的方法
-        self.append: callable = self.root_ui.append
-        self.insert: callable = self.root_ui.insert
-        self.remove: callable = self.root_ui.remove
-        self.pop   : callable = self.root_ui.pop
-        self.clear : callable = self.root_ui.clear
+        self.append: Callable = self.root_ui.append
+        self.insert: Callable = self.root_ui.insert
+        self.remove: Callable = self.root_ui.remove
+        self.pop   : Callable = self.root_ui.pop
+        self.clear : Callable = self.root_ui.clear
         # 方便访问事件处理器的管理监听器方法
-        self.add_event_listener   : callable = self.event_handler.add_event_listener
-        self.remove_event_listener: callable = self.event_handler.remove_event_listener
+        self.add_event_listener   : Callable = self.event_handler.add_event_listener
+        self.remove_event_listener: Callable = self.event_handler.remove_event_listener
 
     def mainloop(self):
         """

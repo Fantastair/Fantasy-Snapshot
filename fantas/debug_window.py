@@ -5,6 +5,7 @@
 from __future__ import annotations
 import sys
 from collections import deque
+from collections.abc import Callable
 
 import fantas
 
@@ -29,7 +30,7 @@ class Lpf:
     """
     滑动平均 + 一阶低通滤波器类。
     """
-    _lpf_map: dict[str, callable] = {}
+    _lpf_map: dict[str, list[deque, float, float, int]] = {}
 
     @staticmethod
     def flit(name: str, x: float, alpha: float = 0.1, ma_win: int = 3) -> float:

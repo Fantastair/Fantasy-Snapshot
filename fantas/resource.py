@@ -1,7 +1,8 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
-from typing import Generic, TypeVar
 from pathlib import Path
+from typing import Generic, TypeVar
+from collections.abc import Callable
+from dataclasses import dataclass, field
 
 import fantas
 
@@ -36,26 +37,26 @@ def image_convert_alpha_hook(surface: fantas.Surface) -> fantas.Surface:
 class ImageLoader(ResourceLoader[fantas.Surface]):
     """ 图像资源加载器。 """
 
-    def load_bitmap(self, path: Path, alias: str = None, hook: callable = image_convert_hook):
+    def load_bitmap(self, path: Path, alias: str = None, hook: Callable[[fantas.Surface], fantas.Surface] = image_convert_hook):
         """
         加载位图图像资源。
         Args:
             path (Path): 图像文件路径。
             alias (str, optional): 资源别名，默认为 None，使用文件名作为资源名称。
-            hook (callable, optional): 图像转换钩子函数，默认为 image_convert_hook。
+            hook (Callable[[fantas.Surface], fantas.Surface], optional): 图像转换钩子函数，默认为 image_convert_hook。
         """
         if not isinstance(path, Path):
             path = Path(path)
         self._resources[alias if alias else path.stem] = hook(fantas.image.load(path))
 
-    def load_svg(self, path: Path, alias: str = None, size: int = 64, hook: callable = image_convert_alpha_hook):
+    def load_svg(self, path: Path, alias: str = None, size: int = 64, hook: Callable[[fantas.Surface], fantas.Surface] = image_convert_alpha_hook):
         """
         加载 SVG 图像资源。
         Args:
             path (Path): SVG 文件路径。
             alias (str, optional): 资源别名，默认为 None，使用文件名作为资源名称。
             size (int, optional): 图像最长边大小，默认为 64 像素。
-            hook (callable, optional): 图像转换钩子函数，默认为 image_convert_alpha_hook。
+            hook (Callable[[fantas.Surface], fantas.Surface], optional): 图像转换钩子函数，默认为 image_convert_alpha_hook。
         """
         if not isinstance(path, Path):
             path = Path(path)

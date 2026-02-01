@@ -76,21 +76,18 @@ import pygame.display   as display
 import pygame.transform as transform
 
 # 导入 fantas 包的各个子模块
+from fantas.fantas_typing import *    # 类型定义
 from fantas.constants     import *    # 常量定义
-from fantas.window        import *    # 窗口管理
+from fantas.nodebase      import *    # 节点基类
+from fantas.curve         import *    # 曲线支持
+from fantas.color         import *    # 颜色支持
 from fantas.font          import *    # 字体支持
+from fantas.resource      import *    # 资源管理
+from fantas.window        import *    # 窗口管理
 from fantas.renderer      import *    # 渲染支持
 from fantas.event_handler import *    # 事件处理
-from fantas.color         import *    # 颜色支持
-from fantas.nodebase      import *    # 节点基类
-from fantas.ui            import *    # UI 基类
-from fantas.background_ui import *    # 背景 UI
-from fantas.label_ui      import *    # 标签 UI
-from fantas.text_ui       import *    # 文字 UI
-from fantas.fantas_typing import *    # 类型定义
-from fantas.resource      import *    # 资源管理
 from fantas.framefunc     import *    # 帧函数支持
-from fantas.curve         import *    # 曲线支持
+from fantas.ui            import *    # UI 基类
 
 # 如果在调试模式下，导入调试和 UDP 通信模块
 if os.environ.get('FANTAS_DEBUG_OFF', '0') != '1':
