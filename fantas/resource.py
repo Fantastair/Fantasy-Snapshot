@@ -80,6 +80,7 @@ class ImageLoader(ResourceLoader[fantas.Surface]):
         self._resources[alias if alias else path.stem] = hook(fantas.image.load_sized_svg(path, size))
 images = ImageLoader()
 
+@dataclass(slots=True)
 class FontLoader(ResourceLoader[fantas.Font]):
     """ 字体资源加载器。 """
 
@@ -111,6 +112,7 @@ class FontLoader(ResourceLoader[fantas.Font]):
     DEFAULTSYSFONT = property(get_default_sysfont, set_default_sysfont)
 fonts = FontLoader()
 
+@dataclass(slots=True)
 class ColorLoader(ResourceLoader[fantas.Color]):
     """ 颜色资源加载器。 """
 
@@ -129,5 +131,3 @@ class ColorLoader(ResourceLoader[fantas.Color]):
         for name, color in colordict.THECOLORS.items():
             self._resources[name] = fantas.Color(color)
 colors = ColorLoader()
-
-

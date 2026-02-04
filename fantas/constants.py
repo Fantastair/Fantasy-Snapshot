@@ -3,11 +3,11 @@ from enum import Enum, IntEnum, auto
 
 import pygame
 import pygame.freetype
-from pygame.freetype import\
-    STYLE_DEFAULT   as TEXTSTYLEFLAG_DEFAULT,\
-    STYLE_NORMAL    as TEXTSTYLEFLAG_NORMAL,\
-    STYLE_STRONG    as TEXTSTYLEFLAG_STRONG,\
-    STYLE_OBLIQUE   as TEXTSTYLEFLAG_OBLIQUE,\
+from pygame.freetype import                    \
+    STYLE_DEFAULT   as TEXTSTYLEFLAG_DEFAULT,  \
+    STYLE_NORMAL    as TEXTSTYLEFLAG_NORMAL,   \
+    STYLE_STRONG    as TEXTSTYLEFLAG_STRONG,   \
+    STYLE_OBLIQUE   as TEXTSTYLEFLAG_OBLIQUE,  \
     STYLE_UNDERLINE as TEXTSTYLEFLAG_UNDERLINE,\
     STYLE_WIDE      as TEXTSTYLEFLAG_WIDE
 from pygame.locals import *
@@ -15,14 +15,14 @@ from pygame.locals import *
 import fantas
 
 __all__ = [
-    "DEFAULTRECT",
     "DEFAULTFONT",
     "DEFAULTTEXTSTYLE",
+    "DEFAULTLABELSTYLE",
 
     "Quadrant",
     "BoxMode",
     "FillMode",
-    "AlignMode",
+    "TextAlignMode",
 
     "WINDOWPOS_UNDEFINED",
     "WINDOWPOS_CENTERED",
@@ -73,13 +73,12 @@ __all__ = [
     "TEXTSTYLEFLAG_WIDE",
 ]
 
-DEFAULTRECT = pygame.Rect(0, 0, 0, 0)       # 默认矩形
-
 DEFAULTFONT = pygame.freetype.Font(None)    # 默认字体
 DEFAULTFONT.origin = True
 DEFAULTFONT.kerning = True
 
-DEFAULTTEXTSTYLE: fantas.TextStyle = None    # 默认文本样式，占位符，在 fantas.font 模块中初始化
+DEFAULTTEXTSTYLE: fantas.TextStyle   = None    # 默认 Text  样式，在 fantas.style 模块中初始化
+DEFAULTLABELSTYLE: fantas.LabelStyle = None    # 默认 Label 样式，在 fantas.style 模块中初始化
 
 class Quadrant(IntEnum):
     """
@@ -90,6 +89,20 @@ class Quadrant(IntEnum):
     TOPLEFT     = 0b001000    # 第二象限
     BOTTOMLEFT  = 0b010010    # 第三象限
     BOTTOMRIGHT = 0b100011    # 第四象限
+
+    ALL = TOPLEFT | TOPRIGHT | BOTTOMLEFT | BOTTOMRIGHT    # 全部象限
+
+    @staticmethod
+    def has_point(quadrant: Quadrant, point: fantas.Point) -> bool:
+        """
+        检查给定点是否在当前象限中。
+        Args:
+            quadrant (Quadrant)    : 象限掩码。
+            point    (fantas.Point): 要检查的点。
+        Returns:
+            bool: 如果点在当前象限中则返回 True，否则返回 False。
+        """
+        return not ((quadrant & 0b11) ^ ((point[0] >= 0) | ((point[1] >= 0) << 1)))
 
 class BoxMode(Enum):
     """ 盒子模式枚举，用来控制边框的扩展方向。 """
@@ -106,12 +119,17 @@ class FillMode(Enum):
     FITMIN = auto()          # 最小适应填充模式，等比缩放图片，确保图片完整显示在目标 rect 内（可能留有空白）
     FITMAX = auto()          # 最大适应填充模式，等比缩放图片，确保图片覆盖整个目标 rect（超出部分将被裁剪）
 
-class AlignMode(Enum):
+class TextAlignMode(Enum):
     """ 文本对齐模式枚举。 """
-    LEFT      = auto()    # 左对齐
-    CENTER    = auto()    # 居中对齐
-    RIGHT     = auto()    # 右对齐
-    LEFTRIGHT = auto()    # 左右对齐（两端对齐）
+    LEFT        = auto()    # 左对齐
+    CENTER      = auto()    # 居中对齐
+    RIGHT       = auto()    # 右对齐
+    TOP         = auto()    # 顶部对齐
+    BOTTOM      = auto()    # 底部对齐
+    TOPLEFT     = auto()    # 左上对齐
+    TOPRIGHT    = auto()    # 右上对齐
+    BOTTOMLEFT  = auto()    # 左下对齐
+    BOTTOMRIGHT = auto()    # 右下对齐
 
 class EventCategory(Enum):
     """ 事件分类枚举。 """

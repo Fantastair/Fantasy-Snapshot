@@ -22,12 +22,16 @@ __all__ = (
 class FrameFunc:
     """
     帧函数类，用于在每一帧调用指定的函数。
+    Args:
+        func  : 帧函数。
+        args  : 位置参数。
+        kwargs: 关键字参数。
     """
     ID    : int = field(default_factory=fantas.generate_unique_id, init=False)    # 唯一标识 ID
 
-    func  : Callable = field(default=None, compare=False)            # 帧函数
-    args  : tuple    = field(default=tuple(), compare=False)         # 位置参数
-    kwargs: dict     = field(default_factory=dict, compare=False)    # 关键字参数
+    func  : Callable = field(default=None, compare=False)
+    args  : tuple    = field(default=tuple(), compare=False)
+    kwargs: dict     = field(default_factory=dict, compare=False)
 
     def __call__(self):
         return self.func(*self.args, **self.kwargs)
@@ -75,12 +79,17 @@ def del_framefunc(framefunc: Callable):
     framefunc_set.discard(framefunc)
 
 @dataclass(slots=True)
-class FrameTrigger(FrameFunc):
+class FrameTrigger:
     """
     帧触发器类，用于在指定的帧数后触发一个函数。
+    Args:
+        frame_func  : 帧函数。
+        total_frames: 总帧数。
     """
 
-    total_frames : int = field(default=0, compare=False)     # 总帧数
+    frame_func   : Callable = field(compare=False)
+    total_frames : int      = field(compare=False)
+
     current_frame: int = field(init=False, compare=False)    # 当前帧数
 
     def start(self):
@@ -121,12 +130,17 @@ class FrameTrigger(FrameFunc):
 get_time_ns = fantas.get_time_ns    # 提高访问速度
 
 @dataclass(slots=True)
-class TimeTrigger(FrameFunc):
+class TimeTrigger:
     """
     时间触发器类，用于在指定的时间后触发一个函数。
+    Args:
+        frame_func : 帧函数。
+        target_time: 目标时间（纳秒）。
     """
 
-    target_time : int | float = field(default=0, compare=False)     # 目标时间（纳秒）
+    frame_func  : Callable    = field(compare=False)
+    target_time : int | float = field(compare=False)
+
     start_time  : int         = field(init=False, compare=False)    # 开始时间（纳秒）
 
     def start(self):
@@ -217,17 +231,22 @@ lerp = fantas.math.lerp    # 提高访问速度
 class AttrKeyFrame(KeyFrame):
     """
     属性关键帧类，用于修改对象的属性。
+    Args:
+        obj       : 目标对象。
+        attr      : 目标属性名。
+        end_value : 结束值。
+        map_curve : 映射曲线。
     """
 
-    func  : None = field(default=None, init=False, compare=False)    # 覆盖父类的 func 属性，不使用它
-    args  : None = field(default=None, init=False, compare=False)    # 覆盖父类的 args 属性，不使用它
-    kwargs: None = field(default=None, init=False, compare=False)    # 覆盖父类的 kwargs 属性，不使用它
+    func       : None  = field(default=None, init=False, compare=False)    # 覆盖父类的 func 属性，不使用它
+    args       : None  = field(default=None, init=False, compare=False)    # 覆盖父类的 args 属性，不使用它
+    kwargs     : None  = field(default=None, init=False, compare=False)    # 覆盖父类的 kwargs 属性，不使用它
+    start_value: float = field(init=False, compare=False)                  # 起始值
 
-    obj        : object = field(default=None, compare=False)               # 目标对象
-    attr       : str    = field(default="", compare=False)                 # 目标属性名
-    end_value  : float  = field(default=1.0, compare=False)                # 结束值
-    start_value: float  = field(init=False, default=0.0, compare=False)    # 起始值
-    map_curve  : fantas.CurveBase = field(default=fantas.CURVE_LINEAR, compare=False)    # 映射曲线
+    obj        : object           = field(compare=False)
+    attr       : str              = field(compare=False)
+    end_value  : float            = field(compare=False)
+    map_curve  : fantas.CurveBase = field(compare=False, default=fantas.CURVE_LINEAR)
 
     def start(self, start_value: float = None):
         """

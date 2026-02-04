@@ -8,7 +8,8 @@ __all__ = (
     "Point", "IntPoint",
     "FileLike",
     "Event", "EventType",
-    "UIID", "ListenerKey", "ListenerFunc",
+    "UIID",
+    "ListenerKey", "ListenerFunc", "ListenerDict",
     "QuadrantMask",
     "TextStyleFlag",
 )
@@ -30,8 +31,9 @@ from pygame.event import Event    # 事件类
 EventType: TypeAlias = int        # 事件类型
 
 UIID: TypeAlias = int    # UI 元素唯一标识类型
-ListenerKey : TypeAlias = tuple[EventType, UIID, bool]    # 监听器键类型
-ListenerFunc: TypeAlias = Callable[[Event], bool]         # 监听器函数类型
+ListenerKey : TypeAlias = tuple[EventType, UIID, bool]             # 监听器键类型
+ListenerFunc: TypeAlias = Callable[[Event], bool]                  # 监听器函数类型
+ListenerDict: TypeAlias = dict[ListenerKey, list[ListenerFunc]]    # 监听器字典类型
 
 QuadrantMask: TypeAlias = int    # 象限掩码类型，是 fantas.Quadrant 通过或运算得到的值
 

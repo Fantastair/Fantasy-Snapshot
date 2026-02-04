@@ -172,7 +172,7 @@ class TimeRecordWindow(fantas.Window):
         self.legend_text = fantas.Text(
             style=fantas.DEFAULTTEXTSTYLE,
             rect=fantas.Rect(50, 68-fantas.DEFAULTTEXTSTYLE.font.get_sized_ascender(fantas.DEFAULTTEXTSTYLE.size), 100, 30 * len(TimeRecordWindow.time_category)),
-            align_mode=fantas.AlignMode.LEFTRIGHT
+            align_mode=fantas.TextAlignMode.LEFTRIGHT
         )
         self.legend_text.line_height = 30
         text = ""
@@ -287,7 +287,7 @@ class MouseMagnifyWindow(fantas.Window):
         )
         self.background.append(self.ratio_text)
 
-        self.mouse_shot_label = fantas.SurfaceLabel(
+        self.mouse_shot_label = fantas.Image(
             surface=fantas.Surface((32, 32)),
             rect=fantas.Rect(0, 0, 256, 256),
             fill_mode=fantas.FillMode.SCALE,

@@ -24,42 +24,6 @@ os.environ.update({
     'SDL_QUIT_ON_LAST_WINDOW_CLOSE'       : '1',               # 在最后一个窗口关闭时退出应用程序
 })
 
-# 提供 fantas 包的路径获取函数
-def package_path():
-    """
-    获取 fantas 包的目录路径。
-    Returns:
-        path (Path): 模块所在的文件系统路径。
-    """
-    from pathlib   import Path
-    from importlib import resources
-    return Path(resources.files(__name__))
-
-# 全局唯一 ID 生成器
-from itertools import count
-id_counter = count()
-def generate_unique_id() -> int:
-    """
-    生成一个全局唯一的整数 ID。
-    Returns:
-        int: 唯一整数 ID。
-    """
-    return next(id_counter)
-
-# 高精度时间获取函数
-from time import perf_counter_ns as get_time_ns
-
-# 类型装饰器以支持类型注解的 lru_cache
-from functools import lru_cache, wraps
-def lru_cache_typed(maxsize=128, typed=False):
-    def decorator(func):
-        @wraps(func)  # 用typing.wraps保留类型签名
-        @lru_cache(maxsize=maxsize, typed=typed)
-        def wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-        return wrapper
-    return decorator
-
 # 初始化 Pygame
 import pygame as pygame
 import pygame.freetype
@@ -77,12 +41,14 @@ import pygame.display   as display
 import pygame.transform as transform
 
 # 导入 fantas 包的各个子模块
+from fantas.misc          import *    # 杂项工具
 from fantas.fantas_typing import *    # 类型定义
 from fantas.constants     import *    # 常量定义
 from fantas.nodebase      import *    # 节点基类
 from fantas.curve         import *    # 曲线支持
 from fantas.color         import *    # 颜色支持
 from fantas.font          import *    # 字体支持
+from fantas.style         import *    # 样式支持
 from fantas.resource      import *    # 资源管理
 from fantas.window        import *    # 窗口管理
 from fantas.renderer      import *    # 渲染支持
@@ -100,4 +66,4 @@ event.set_blocked(None)
 # 启用所有已分类事件
 event.set_allowed(list(event_category_dict.keys()))
 
-del pygame, count, os
+del pygame, os

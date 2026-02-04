@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 import math
 
-# import fantas
+import fantas
 
 __all__ = (
     "CurveBase",
@@ -51,11 +51,11 @@ class FormulaCurve(CurveBase):
     使用数学公式定义的曲线。
 
     Args:
-        formula (str): 用于计算 y 值的数学公式，变量为 x。
+        formula: 用于计算 y 值的数学公式，变量为 x。
     """
     formula: str
 
-    # @fantas.lru_cache_typed(maxsize=65536, typed=True)
+    @fantas.lru_cache_typed(maxsize=65536)
     def __call__(self, x: float) -> float:
         """
         计算曲线在给定 x 值处的 y 值。

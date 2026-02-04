@@ -64,7 +64,7 @@ class Window(PygameWindow):
         self.clock        : fantas.time.Clock   = fantas.time.Clock()      # 用于控制帧率的时钟对象
         self.screen       : fantas.Surface      = self.get_surface()       # 窗口的主 Surface 对象
         self.renderer     : fantas.Renderer     = fantas.Renderer(self)    # 窗口的渲染器对象
-        self.root_ui      : fantas.UI           = fantas.UI()              # 窗口的根 UI 元素是一个空的根节点
+        self.root_ui      : fantas.WindowRoot   = fantas.WindowRoot(window=self)      # 窗口的根 UI 元素
         self.event_handler: fantas.EventHandler = fantas.EventHandler(window=self)    # 窗口的事件处理器对象
 
         # 方便访问根 UI 元素的方法

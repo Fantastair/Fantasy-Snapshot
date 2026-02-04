@@ -11,18 +11,21 @@ __all__ = (
     "SurfaceRenderCommand",
     "ColorFillCommand",
     "ColorBackgroundFillCommand",
-    "TextLineRenderCommand",
+    "LabelRenderCommand",
     "TextRenderCommand",
     "QuarterCircleRenderCommand",
 )
 
+@dataclass(slots=True)
 class Renderer:
     """
     渲染器类，管理渲染命令队列并执行渲染操作。
+    Args:
+        window: 关联的窗口对象。
     """
-    def __init__(self, window: fantas.Window):
-        self.window = window    # 关联的窗口对象
-        self.queue = deque()    # 渲染命令队列，左端入右端出
+    window: fantas.Window    # 关联的窗口对象
+
+    queue: deque = field(default_factory=deque, init=False, repr=False)    # 渲染命令队列，左端入右端出
 
     def pre_render(self, root_ui: fantas.UI):
         """
@@ -68,8 +71,10 @@ class Renderer:
 class RenderCommand(ABC):
     """
     渲染命令基类。
+    Args:
+        creator: 创建此渲染命令的 UI 元素。
     """
-    creator: fantas.UI    # 创建此渲染命令的 UI 元素
+    creator: fantas.UI
 
     @abstractmethod
     def render(self, target_surface: fantas.Surface):
@@ -96,10 +101,14 @@ class RenderCommand(ABC):
 class SurfaceRenderCommand(RenderCommand):
     """
     Surface 渲染命令类。
+    Args:
+        surface  : 要渲染的 Surface 对象。
+        fill_mode: 填充模式。
+        dest_rect: 目标矩形区域。
     """
-    surface  : fantas.Surface                                                      # 要渲染的 Surface 对象
-    fill_mode: fantas.FillMode = fantas.FillMode.IGNORE                            # 填充模式
-    dest_rect: fantas.RectLike = field(default_factory=fantas.DEFAULTRECT.copy)    # 目标矩形区域
+    surface  : fantas.Surface
+    dest_rect: fantas.RectLike
+    fill_mode: fantas.FillMode = fantas.FillMode.IGNORE
 
     affected_area: fantas.RectLike = field(init=False, repr=False)                 # 受影响的矩形区域
 
@@ -223,9 +232,12 @@ SurfaceRenderCommand_render_map = {
 class ColorFillCommand(RenderCommand):
     """
     颜色填充命令类。
+    Args:
+        dest_rect: 目标矩形区域。
+        color    : 填充颜色。
     """
-    color    : fantas.ColorLike = 'black'    # 填充颜色
-    dest_rect: fantas.RectLike  = field(default_factory=fantas.DEFAULTRECT.copy)    # 目标矩形区域，指定填充的位置和大小
+    dest_rect: fantas.RectLike
+    color    : fantas.ColorLike = 'black'
 
     def render(self, target_surface: fantas.Surface):
         """
@@ -248,8 +260,10 @@ class ColorFillCommand(RenderCommand):
 class ColorBackgroundFillCommand(RenderCommand):
     """
     颜色背景填充命令类。
+    Args:
+        color: 填充颜色。
     """
-    color    : fantas.ColorLike = 'black'    # 填充颜色
+    color    : fantas.ColorLike = 'black'
 
     def render(self, target_surface: fantas.Surface):
         """
@@ -270,25 +284,27 @@ class ColorBackgroundFillCommand(RenderCommand):
         return True
 
 @dataclass(slots=True)
-class TextLineRenderCommand(RenderCommand):
+class LabelRenderCommand(RenderCommand):
     """
-    文本渲染命令类。
+    矩形标签渲染命令类。
+    Args:
+        style: 标签样式。
+        rect : 渲染区域。
     """
-    text     : str                 = 'text'                              # 文本内容
-    style    : fantas.TextStyle    = field(default_factory=lambda: fantas.DEFAULTTEXTSTYLE)    # 文本样式
-    origin   : fantas.Point        = (0, 0)                              # 渲染原点
-    affected_rect: fantas.RectLike = field(init=False)                   # 受影响的矩形区域
+    style: fantas.LabelStyle = field(init=False)
+    rect : fantas.RectLike   = field(init=False)
+
+    affected_rects: list[fantas.RectLike] = field(init=False, repr=False)                         # 受影响的矩形区域
+    affected_qc   : list[tuple[fantas.Quadrant, float, float]] = field(init=False, repr=False)    # 受影响的圆角区域
 
     def render(self, target_surface: fantas.Surface):
         """
-        执行文本渲染操作。
+        执行渲染操作。
         Args:
             target_surface (fantas.Surface): 目标 Surface 对象。
         """
-        # 简化引用
-        s = self.style
-        # 执行渲染
-        self.affected_rect = s.font.render_to(target_surface, self.origin, self.text, s.fgcolor, style=s.style_flag, size=s.size)
+        pass
+
 
     def hit_test(self, point: fantas.IntPoint) -> bool:
         """
@@ -298,19 +314,22 @@ class TextLineRenderCommand(RenderCommand):
         Returns:
             bool: 如果点在区域内则返回 True，否则返回 False。
         """
-        return self.affected_rect.collidepoint(point)
+        pass
 
 @dataclass(slots=True)
 class TextRenderCommand(RenderCommand):
     """
-    多行文本渲染命令类。
+    文本渲染命令类。
+    Args:
+        text      : 文本内容。
+        align_mode: 对齐模式。
+        style     : 文本样式。
+        rect      : 渲染区域。
     """
-    text        : str              = 'text'                              # 文本内容
-    style       : fantas.TextStyle = field(default_factory=lambda: fantas.DEFAULTTEXTSTYLE)    # 文本样式
-    line_spacing: float            = 4.0                                 # 行间距
-    rect        : fantas.RectLike  = field(default_factory=lambda: fantas.Rect(0, 0, 100, 0))    # 渲染区域
-    align_mode  : fantas.AlignMode = fantas.AlignMode.LEFT               # 对齐模式
-    reverse     : bool             = False                               # 反向渲染标志
+    text      : str                  = 'text'
+    align_mode: fantas.TextAlignMode = fantas.TextAlignMode.LEFT
+    style     : fantas.TextStyle     = field(default_factory=lambda: fantas.DEFAULTTEXTSTYLE)
+    rect      : fantas.RectLike      = field(default_factory=lambda: fantas.Rect(0, 0, 100, 0))
 
     affected_rects: list[fantas.RectLike] = field(default_factory=list, init=False, repr=False)    # 受影响的矩形区域列表
 
@@ -323,7 +342,7 @@ class TextRenderCommand(RenderCommand):
         # 简化引用
         s = self.style
         # 执行渲染
-        TextRenderCommand_render_map[self.align_mode](self, target_surface, s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width))
+        TextRenderCommand_render_map[self.align_mode](self, target_surface)
 
     def hit_test(self, point: fantas.IntPoint) -> bool:
         """
@@ -338,12 +357,11 @@ class TextRenderCommand(RenderCommand):
                 return True
         return False
 
-    def render_LEFT(self, target_surface: fantas.Surface, wraps: tuple[tuple[str, int]]):
+    def render_LEFT(self, target_surface: fantas.Surface):
         """
-        执行左对齐多行文本渲染操作。
+        左对齐渲染。
         Args:
-            target_surface (fantas.Surface)        : 目标 Surface 对象。
-            wraps          (tuple[tuple[str, int]]): 换行后的文本行列表，每行包含文本内容和宽度。
+            target_surface (fantas.Surface): 目标 Surface 对象。
         """
         # 简化引用
         s = self.style
@@ -352,164 +370,271 @@ class TextRenderCommand(RenderCommand):
         ar = self.affected_rects
         ar_append = ar.append
         rect = self.rect
-        height = font.get_sized_height(size)
-        line_height = height + self.line_spacing
+        line_height = font.get_sized_height(size) + self.line_spacing
         # 清空受影响矩形列表
         ar.clear()
-        # 渲染原点
+        # 计算换行结果
+        wraps = s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width)
+        # 计算渲染原点及范围
         origin_x = rect.left
+        origin_y = rect.centery - (len(wraps) * line_height - self.line_spacing) // 2
         min_y = rect.top + font.get_sized_ascender(size)
         max_y = rect.bottom + font.get_sized_descender(size)
-        # 如果反向渲染
-        if self.reverse:
-            for text, _ in reversed(wraps):
-                ar_append(font.render_to(target_surface, (origin_x, max_y), text, s.fgcolor, style=s.style_flag, size=size))
-                max_y -= line_height
-                if max_y < min_y:
-                    break
-        # 否则正向渲染
-        else:
-            for text, _ in wraps:
-                ar_append(font.render_to(target_surface, (origin_x, min_y), text, s.fgcolor, style=s.style_flag, size=size))
-                min_y += line_height
-                if max_y < min_y:
-                    break
+        # 执行渲染
+        for text, _ in reversed(wraps):
+            if origin_y >= min_y:
+                ar_append(font.render_to(target_surface, (origin_x, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+            origin_y += line_height
+            if origin_y > max_y:
+                break
 
-    def render_CENTER(self, target_surface: fantas.Surface, wraps: tuple[tuple[str, int]]):
+    def render_CENTER(self, target_surface: fantas.Surface):
         """
-        执行居中对齐多行文本渲染操作。
+        居中对齐渲染。
         Args:
-            target_surface (fantas.Surface)        : 目标 Surface 对象。
-            wraps          (tuple[tuple[str, int]]): 换行后的文本行列表，每行包含文本内容和宽度。
+            target_surface (fantas.Surface): 目标 Surface 对象。
         """
         # 简化引用
         s = self.style
         size = s.size
         font = s.font
-        line_height = font.get_sized_height(size) + self.line_spacing
+        ar = self.affected_rects
+        ar_append = ar.append
         rect = self.rect
         centerx = rect.centerx
-        ar = self.affected_rects
-        ar_append = ar.append
+        line_height = font.get_sized_height(size) + self.line_spacing
         # 清空受影响矩形列表
         ar.clear()
-        # 渲染原点
+        # 计算换行结果
+        wraps = s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width)
+        # 计算渲染原点及范围
+        origin_y = rect.centery - (len(wraps) * line_height - self.line_spacing) // 2
         min_y = rect.top + font.get_sized_ascender(size)
         max_y = rect.bottom + font.get_sized_descender(size)
-        # 如果反向渲染
-        if self.reverse:
-            for text, text_width in reversed(wraps):
-                ar_append(font.render_to(target_surface, (centerx - text_width // 2, max_y), text, s.fgcolor, style=s.style_flag, size=size))
-                max_y -= line_height
-                if max_y < min_y:
-                    break
-        # 否则正向渲染
-        else:
-            for text, text_width in wraps:
-                ar_append(font.render_to(target_surface, (centerx - text_width // 2, min_y), text, s.fgcolor, style=s.style_flag, size=size))
-                min_y += line_height
-                if max_y < min_y:
-                    break
+        # 执行渲染
+        for text, width in reversed(wraps):
+            if origin_y >= min_y:
+                ar_append(font.render_to(target_surface, (centerx - width // 2, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+            origin_y += line_height
+            if origin_y > max_y:
+                break
 
     def render_RIGHT(self, target_surface: fantas.Surface, wraps: tuple[tuple[str, int]]):
         """
-        执行居中对齐多行文本渲染操作。
+        右对齐渲染。
         Args:
-            target_surface (fantas.Surface)        : 目标 Surface 对象。
-            wraps          (tuple[tuple[str, int]]): 换行后的文本行列表，每行包含文本内容和宽度。
+            target_surface (fantas.Surface): 目标 Surface 对象。
         """
         # 简化引用
         s = self.style
         size = s.size
         font = s.font
-        line_height = font.get_sized_height(size) + self.line_spacing
+        ar = self.affected_rects
+        ar_append = ar.append
         rect = self.rect
         right = rect.right
-        ar = self.affected_rects
-        ar_append = ar.append
+        line_height = font.get_sized_height(size) + self.line_spacing
         # 清空受影响矩形列表
         ar.clear()
-        # 渲染原点
+        # 计算换行结果
+        wraps = s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width)
+        # 计算渲染原点及范围
+        origin_y = rect.centery - (len(wraps) * line_height - self.line_spacing) // 2
         min_y = rect.top + font.get_sized_ascender(size)
         max_y = rect.bottom + font.get_sized_descender(size)
-        # 如果反向渲染
-        if self.reverse:
-            for text, text_width in reversed(wraps):
-                ar_append(font.render_to(target_surface, (right - text_width, max_y), text, s.fgcolor, style=s.style_flag, size=size))
-                max_y -= line_height
-                if max_y < min_y:
-                    break
-        # 否则正向渲染
-        else:
-            for text, text_width in wraps:
-                ar_append(font.render_to(target_surface, (right - text_width, min_y), text, s.fgcolor, style=s.style_flag, size=size))
-                min_y += line_height
-                if max_y < min_y:
-                    break
-
-    def render_LEFTRIGHT(self, target_surface: fantas.Surface, wraps: tuple[tuple[str, int]]):
+        # 执行渲染
+        for text, width in reversed(wraps):
+            if origin_y >= min_y:
+                ar_append(font.render_to(target_surface, (right - width, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+            origin_y += line_height
+            if origin_y > max_y:
+                break
+    
+    def render_TOP(self, target_surface: fantas.Surface):
         """
-        执行左对齐多行文本渲染操作。
+        顶部对齐渲染。
         Args:
-            target_surface (fantas.Surface)        : 目标 Surface 对象。
-            wraps          (tuple[tuple[str, int]]): 换行后的文本行列表，每行包含文本内容和宽度。
+            target_surface (fantas.Surface): 目标 Surface 对象。
         """
         # 简化引用
         s = self.style
         size = s.size
         font = s.font
-        line_height = font.get_sized_height(size) + self.line_spacing
-        rect = self.rect
-        left = rect.left
-        width = rect.width
-        centerx = rect.centerx
         ar = self.affected_rects
         ar_append = ar.append
+        rect = self.rect
+        centerx = rect.centerx
+        line_height = font.get_sized_height(size) + self.line_spacing
         # 清空受影响矩形列表
         ar.clear()
-        # 渲染原点
+        # 计算换行结果
+        wraps = s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width)
+        # 计算渲染原点及范围
+        origin_y = rect.top + font.get_sized_ascender(size)
+        max_y = rect.bottom + font.get_sized_descender(size)
+        # 执行渲染
+        for text, width in reversed(wraps):
+            ar_append(font.render_to(target_surface, (centerx - width // 2, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+            origin_y += line_height
+            if origin_y > max_y:
+                break
+    
+    def render_BOTTOM(self, target_surface: fantas.Surface):
+        """
+        底部对齐渲染。
+        Args:
+            target_surface (fantas.Surface): 目标 Surface 对象。
+        """
+        # 简化引用
+        s = self.style
+        size = s.size
+        font = s.font
+        ar = self.affected_rects
+        ar_append = ar.append
+        rect = self.rect
+        centerx = rect.centerx
+        line_height = font.get_sized_height(size) + self.line_spacing
+        # 清空受影响矩形列表
+        ar.clear()
+        # 计算换行结果
+        wraps = s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width)
+        # 计算渲染原点及范围
         min_y = rect.top + font.get_sized_ascender(size)
-        max_y = rect.bottom - font.get_sized_descender(size)
-        # 如果反向渲染
-        if self.reverse:
-            for text, text_width in reversed(wraps):
-                if len(text) == 1:
-                    ar_append(font.render_to(target_surface, (centerx - text_width // 2, max_y), text, s.fgcolor, style=s.style_flag, size=size))
-                    max_y -= line_height
-                    if max_y < min_y:
-                        break
-                    continue
-                char_space = (width - text_width) / (len(text) - 1)
-                origin_x = left
-                for char in text:
-                    ar_append(font.render_to(target_surface, (origin_x, max_y), char, s.fgcolor, style=s.style_flag, size=size))
-                    origin_x += font.get_rect(char, s.style_flag, size=size).width + char_space
-                max_y -= line_height
-                if max_y < min_y:
-                    break
-        # 否则正向渲染
-        else:
-            for text, text_width in wraps:
-                if len(text) == 1:
-                    ar_append(font.render_to(target_surface, (centerx - text_width // 2, min_y), text, s.fgcolor, style=s.style_flag, size=size))
-                    min_y += line_height
-                    if max_y < min_y:
-                        break
-                    continue
-                char_space = (width - text_width) / (len(text) - 1)
-                origin_x = left
-                for char in text:
-                    ar_append(font.render_to(target_surface, (origin_x, min_y), char, s.fgcolor, style=s.style_flag, size=size))
-                    origin_x += font.get_rect(char, s.style_flag, size=size).width + char_space
-                min_y += line_height
-                if max_y < min_y:
-                    break
+        max_y = rect.bottom + font.get_sized_descender(size)
+        origin_y = max_y - len(wraps) * line_height + self.line_spacing
+        # 执行渲染
+        for text, width in reversed(wraps):
+            if origin_y >= min_y:
+                ar_append(font.render_to(target_surface, (centerx - width // 2, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+            origin_y += line_height
+    
+    def render_TOPLEFT(self, target_surface: fantas.Surface):
+        """
+        左上对齐渲染。
+        Args:
+            target_surface (fantas.Surface): 目标 Surface 对象。
+        """
+        # 简化引用
+        s = self.style
+        size = s.size
+        font = s.font
+        ar = self.affected_rects
+        ar_append = ar.append
+        rect = self.rect
+        line_height = font.get_sized_height(size) + self.line_spacing
+        # 清空受影响矩形列表
+        ar.clear()
+        # 计算换行结果
+        wraps = s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width)
+        # 计算渲染原点及范围
+        origin_x = rect.left
+        origin_y = rect.top + font.get_sized_ascender(size)
+        max_y = rect.bottom + font.get_sized_descender(size)
+        # 执行渲染
+        for text, _ in reversed(wraps):
+            ar_append(font.render_to(target_surface, (origin_x, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+            origin_y += line_height
+            if origin_y > max_y:
+                break
+    
+    def render_TOPRIGHT(self, target_surface: fantas.Surface):
+        """
+        右上对齐渲染。
+        Args:
+            target_surface (fantas.Surface): 目标 Surface 对象。
+        """
+        # 简化引用
+        s = self.style
+        size = s.size
+        font = s.font
+        ar = self.affected_rects
+        ar_append = ar.append
+        rect = self.rect
+        right = rect.right
+        line_height = font.get_sized_height(size) + self.line_spacing
+        # 清空受影响矩形列表
+        ar.clear()
+        # 计算换行结果
+        wraps = s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width)
+        # 计算渲染原点及范围
+        origin_y = rect.top + font.get_sized_ascender(size)
+        max_y = rect.bottom + font.get_sized_descender(size)
+        # 执行渲染
+        for text, width in reversed(wraps):
+            ar_append(font.render_to(target_surface, (right - width, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+            origin_y += line_height
+            if origin_y > max_y:
+                break
+    
+    def render_BOTTOMLEFT(self, target_surface: fantas.Surface):
+        """
+        左下对齐渲染。
+        Args:
+            target_surface (fantas.Surface): 目标 Surface 对象。
+        """
+        # 简化引用
+        s = self.style
+        size = s.size
+        font = s.font
+        ar = self.affected_rects
+        ar_append = ar.append
+        rect = self.rect
+        line_height = font.get_sized_height(size) + self.line_spacing
+        # 清空受影响矩形列表
+        ar.clear()
+        # 计算换行结果
+        wraps = s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width)
+        # 计算渲染原点及范围
+        origin_x = rect.left
+        min_y = rect.top + font.get_sized_ascender(size)
+        max_y = rect.bottom + font.get_sized_descender(size)
+        origin_y = max_y - len(wraps) * line_height + self.line_spacing
+        # 执行渲染
+        for text, _ in reversed(wraps):
+            if origin_y >= min_y:
+                ar_append(font.render_to(target_surface, (origin_x, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+            origin_y += line_height
+    
+    def render_BOTTOMRIGHT(self, target_surface: fantas.Surface):
+        """
+        右下对齐渲染。
+        Args:
+            target_surface (fantas.Surface): 目标 Surface 对象。
+        """
+        # 简化引用
+        s = self.style
+        size = s.size
+        font = s.font
+        ar = self.affected_rects
+        ar_append = ar.append
+        rect = self.rect
+        right = rect.right
+        line_height = font.get_sized_height(size) + self.line_spacing
+        # 清空受影响矩形列表
+        ar.clear()
+        # 计算换行结果
+        wraps = s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width)
+        # 计算渲染原点及范围
+        min_y = rect.top + font.get_sized_ascender(size)
+        max_y = rect.bottom + font.get_sized_descender(size)
+        origin_y = max_y - len(wraps) * line_height + self.line_spacing
+        # 执行渲染
+        for text, width in reversed(wraps):
+            if origin_y >= min_y:
+                ar_append(font.render_to(target_surface, (right - width, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+            origin_y += line_height
 
+# TextRenderCommand 渲染映射表
 TextRenderCommand_render_map = {
-    fantas.AlignMode.LEFT     : TextRenderCommand.render_LEFT,
-    fantas.AlignMode.CENTER   : TextRenderCommand.render_CENTER,
-    fantas.AlignMode.RIGHT    : TextRenderCommand.render_RIGHT,
-    fantas.AlignMode.LEFTRIGHT: TextRenderCommand.render_LEFTRIGHT,
+    fantas.TextAlignMode.TOP        : TextRenderCommand.render_TOP,
+    fantas.TextAlignMode.LEFT       : TextRenderCommand.render_LEFT,
+    fantas.TextAlignMode.RIGHT      : TextRenderCommand.render_RIGHT,
+    fantas.TextAlignMode.BOTTOM     : TextRenderCommand.render_BOTTOM,
+    fantas.TextAlignMode.CENTER     : TextRenderCommand.render_CENTER,
+    fantas.TextAlignMode.TOPLEFT    : TextRenderCommand.render_TOPLEFT,
+    fantas.TextAlignMode.TOPRIGHT   : TextRenderCommand.render_TOPRIGHT,
+    fantas.TextAlignMode.BOTTOMLEFT : TextRenderCommand.render_BOTTOMLEFT,
+    fantas.TextAlignMode.BOTTOMRIGHT: TextRenderCommand.render_BOTTOMRIGHT,
 }
 
 # 象限映射表
@@ -524,12 +649,18 @@ quadrant_map = {
 class QuarterCircleRenderCommand(RenderCommand):
     """
     四分之一圆渲染命令类。
+    Args:
+        color    : 圆的颜色。
+        center   : 圆心位置。
+        radius   : 圆的半径，≥ 1。
+        width    : 圆边框宽度，≥ 0，0 表示填充。
+        quadrant : 象限。
     """
-    color    : fantas.ColorLike = 'black'    # 圆的颜色
-    center   : fantas.Point     = (0, 0)     # 圆心位置
-    radius   : int | float      = 8          # 圆的半径，≥ 1
-    width    : int | float      = 0          # 圆边框宽度，≥ 0，0 表示填充
-    quadrant : fantas.Quadrant  = fantas.Quadrant.TOPRIGHT    # 象限
+    color    : fantas.ColorLike = 'black'
+    center   : fantas.Point     = (0, 0)
+    radius   : int | float      = 8
+    width    : int              = 0
+    quadrant : fantas.Quadrant  = fantas.Quadrant.TOPRIGHT
 
     def render(self, target_surface: fantas.Surface):
         """
@@ -543,7 +674,7 @@ class QuarterCircleRenderCommand(RenderCommand):
         """
         命中测试。
         Args:
-            point (fantas.IntPoint): 坐标点（x, y）。
+            point (fantas.Point): 坐标点（x, y）。
         Returns:
             bool: 如果点在区域内则返回 True，否则返回 False。
         """
@@ -552,7 +683,7 @@ class QuarterCircleRenderCommand(RenderCommand):
         dx = point[0] - cx
         dy = point[1] - cy
         # 符号测试
-        if (self.quadrant & 0b11) ^ ((dx >= 0) | ((dy >= 0) << 1)):
+        if not fantas.Quadrant.has_point(self.quadrant, (dx, dy)):
             return False
         # 距离测试
         return self.radius * self.radius >= dx * dx + dy * dy >= self.width * self.width
