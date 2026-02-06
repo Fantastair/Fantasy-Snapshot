@@ -71,6 +71,8 @@ __all__ = [
     "TEXTSTYLEFLAG_OBLIQUE",
     "TEXTSTYLEFLAG_UNDERLINE",
     "TEXTSTYLEFLAG_WIDE",
+
+    "SRCALPHA",
 ]
 
 DEFAULTFONT = pygame.freetype.Font(None)    # 默认字体

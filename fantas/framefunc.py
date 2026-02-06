@@ -13,7 +13,7 @@ __all__ = (
     "FrameTrigger",
     "TimeTrigger",
 
-    "KeyFrame",
+    "KeyFrameBase",
     "AttrKeyFrame",
     "ColorKeyframe",
 )
@@ -83,12 +83,12 @@ class FrameTrigger:
     """
     帧触发器类，用于在指定的帧数后触发一个函数。
     Args:
-        frame_func  : 帧函数。
+        func        : 触发函数。
         total_frames: 总帧数。
     """
 
-    frame_func   : Callable = field(compare=False)
-    total_frames : int      = field(compare=False)
+    func        : Callable = field(compare=False)
+    total_frames: int      = field(default=0, compare=False)
 
     current_frame: int = field(init=False, compare=False)    # 当前帧数
 
@@ -123,7 +123,7 @@ class FrameTrigger:
         """
         self.current_frame += 1
         if self.current_frame >= self.total_frames:
-            self()
+            self.func()
             return True
         return False
 
@@ -134,20 +134,23 @@ class TimeTrigger:
     """
     时间触发器类，用于在指定的时间后触发一个函数。
     Args:
-        frame_func : 帧函数。
+        func       : 触发函数。
         target_time: 目标时间（纳秒）。
     """
 
-    frame_func  : Callable    = field(compare=False)
-    target_time : int | float = field(compare=False)
+    func       : Callable    = field(compare=False)
+    target_time: int | float = field(compare=False)
 
     start_time  : int         = field(init=False, compare=False)    # 开始时间（纳秒）
 
-    def start(self):
+    def start(self, restart: bool = True):
         """
         启动时间触发器。
+        Args:
+            restart (bool): 是否重新计时。如果为 True，则从当前时间开始计时；如果为 False，则继续之前的计时。
         """
-        self.start_time = get_time_ns()
+        if restart or not self.is_started():
+            self.start_time = get_time_ns()
         add_framefunc(self.tick)
 
     def stop(self):
@@ -155,6 +158,15 @@ class TimeTrigger:
         停止时间触发器。
         """
         del_framefunc(self.tick)
+    
+    def is_started(self) -> bool:
+        """
+        检查时间触发器是否已启动。
+
+        Returns:
+            bool: 如果时间触发器已启动则返回 True，否则返回 False。
+        """
+        return self.tick in framefunc_set
 
     def tick(self) -> bool:
         """
@@ -164,7 +176,7 @@ class TimeTrigger:
             bool: 如果触发器已完成则返回 True，否则返回 False。
         """
         if get_time_ns() - self.start_time >= self.target_time:
-            self()
+            self.func()
             return True
         return False
 
@@ -205,17 +217,10 @@ class TimeTrigger:
         self.target_time = target_time * 1_000_000_000
 
 @dataclass(slots=True)
-class KeyFrame(TimeTrigger):
+class KeyFrameBase(TimeTrigger):
     """
-    关键帧类，用于在指定的时间点执行特定的函数。
+    关键帧基类，用于在指定的时间内按比例调用一个函数。
     """
-    def __call__(self, ratio: float):
-        """
-        在指定的时间点执行函数。
-        Args:
-            ratio (float): 当前时间点与总时间的比例。
-        """
-        self.func(ratio, *self.args, **self.kwargs)
 
     def tick(self) -> bool:
         t = get_time_ns() - self.start_time
@@ -228,7 +233,7 @@ class KeyFrame(TimeTrigger):
 lerp = fantas.math.lerp    # 提高访问速度
 
 @dataclass(slots=True)
-class AttrKeyFrame(KeyFrame):
+class AttrKeyFrame(KeyFrameBase):
     """
     属性关键帧类，用于修改对象的属性。
     Args:
@@ -248,19 +253,20 @@ class AttrKeyFrame(KeyFrame):
     end_value  : float            = field(compare=False)
     map_curve  : fantas.CurveBase = field(compare=False, default=fantas.CURVE_LINEAR)
 
-    def start(self, start_value: float = None):
+    def start(self, start_value: float = None, restart: bool = True):
         """
         启动属性关键帧。
 
         Args:
             start_value (float, optional): 起始值。如果为 None，则使用当前属性值作为起始值。
+            restart (bool): 是否重新计时。如果为 True，则从当前时间开始计时；如果为 False，则继续之前的计时。
         """
         if start_value is None:
             self.start_value = getattr(self.obj, self.attr)
         else:
             self.start_value = start_value
-        KeyFrame.start(self)
-    
+        KeyFrameBase.start(self, restart)
+
     def __call__(self, ratio: float):
         """
         在指定的时间点修改对象的属性。

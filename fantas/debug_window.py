@@ -83,9 +83,22 @@ class EventLogWindow(fantas.Window):
         self.text = fantas.Text(fantas.Rect(10, 0, self.size[0] - 20, self.size[1]), '', align_mode=fantas.TextAlignMode.BOTTOMLEFT)
         self.background.append(self.text)
 
-        self.lines: deque[str] = deque(maxlen=64)
+        self.top_gradient = fantas.LinearGradientLabel(
+            rect = fantas.Rect(0, 0, self.size[0], 64),
+            start_color = fantas.Color(0, 0, 0, 255),
+            end_color   = fantas.Color(0, 0, 0, 0),
+            start_pos=(0, 0),
+            end_pos=(0, 64),
+        )
+        self.background.append(self.top_gradient)
+
+        self.lines: deque[str] = deque(maxlen=32)
         self.add_event_listener(fantas.WINDOWRESIZED, self.root_ui, True, self.handle_WINDOWRESIZED_event)
         self.add_event_listener(fantas.WINDOWCLOSE, self.root_ui, True, self.handle_WINDOWCLOSE_event)
+
+        self.log_kf = fantas.AttrKeyFrame(0, self.text.rect, 'height', self.size[1], fantas.CURVE_SLOWER)
+        self.log_kf.start_value = self.size[1]
+        self.log_kf.set_target_time_ms(300)
 
     def log_event(self, event_str: str):
         """
@@ -93,8 +106,15 @@ class EventLogWindow(fantas.Window):
         Args:
             event_str (str): 事件信息字符串。
         """
+        # 添加新事件到日志列表
         self.lines.append(event_str)
         self.text.text = '\n---\n'.join(self.lines)
+        # 调整文本区域高度（目的是保持新文本添加后原来的文本位置不变，然后通过关键帧动画平滑过渡）        
+        s = self.text.style
+        self.text.rect.height += len(s.font.auto_wrap(s.style_flag, s.size, event_str, self.text.rect.width)) * self.text.line_height + self.text.line_height
+        # 如果文本高度过大，则保持关键帧不重启
+        # 快速结束动画，防止记录被截断（最大深度只有32条）
+        self.log_kf.start(restart=self.text.rect.height <= self.size[1] + 400)
 
     def handle_WINDOWRESIZED_event(self, event: fantas.Event):
         """
@@ -110,6 +130,10 @@ class EventLogWindow(fantas.Window):
             self.size = (event.x, event.y)
         self.text.rect.width = event.x - 20
         self.text.rect.height = event.y
+        self.log_kf.end_value = self.log_kf.start_value = event.y
+        if event.x != self.top_gradient.rect.width:
+            self.top_gradient.rect.width = event.x
+            self.top_gradient.mark_cache_dirty()
 
     def handle_WINDOWCLOSE_event(self, event: fantas.Event):
         """

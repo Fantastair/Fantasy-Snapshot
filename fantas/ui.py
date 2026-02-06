@@ -11,6 +11,7 @@ __all__ = (
     "Image",
     "Text",
     "TextLabel",
+    "LinearGradientLabel",
 )
 
 @dataclass(slots=True)
@@ -140,7 +141,7 @@ class Image(UI):
 
     def __post_init__(self):
         """ 初始化 Image 实例 """
-        self.command = fantas.SurfaceRenderCommand(creator=self, surface=self.surface, dest_rect=self.rect)
+        self.command = fantas.SurfaceRenderCommand(creator=self)
         if self.rect is None:
             self.rect = fantas.Rect((0, 0), self.surface.get_size())
 
@@ -159,7 +160,7 @@ class Image(UI):
         c = self.command
         c.surface = self.surface
         c.fill_mode = self.fill_mode
-        c.dest_rect.update(rect)
+        c.dest_rect = rect
         yield c
         # 生成子元素的渲染命令
         yield from UI.create_render_commands(self, offset)
@@ -214,13 +215,13 @@ class Text(UI):
         # 生成渲染命令
         yield rc
 
-    def get_lineheight(self) -> float:
+    def _get_lineheight(self) -> float:
         """ 获取文本行高（包含行间距） """
-        return self.style.font.get_sized_height(self.style.size) + self.line_spacing
-    def set_lineheight(self, lineheight: float) -> None:
+        return self.style.font.get_sized_height(self.style.size) + self.style.line_spacing
+    def _set_lineheight(self, lineheight: float) -> None:
         """ 设置文本行高（包含行间距） """
         self.style.line_spacing = lineheight - self.style.font.get_sized_height(self.style.size)
-    line_height = property(get_lineheight, set_lineheight)
+    line_height = property(_get_lineheight, _set_lineheight)
 
 @dataclass(slots=True)
 class TextLabel(UI):
@@ -296,3 +297,56 @@ class TextLabel(UI):
         """ 设置文本行高（包含行间距） """
         self.text_style.line_spacing = lineheight - self.text_style.font.get_sized_height(self.text_style.size)
     line_height = property(get_lineheight, set_lineheight)
+
+@dataclass(slots=True)
+class LinearGradientLabel(UI):
+    """
+    线性渐变标签类。
+    Args:
+        rect       : 矩形区域。
+        start_color: 起始颜色。
+        end_color  : 结束颜色。
+        start_pos  : 起始位置。
+        end_pos    : 结束位置。
+    """
+    rect       : fantas.RectLike
+    start_color: fantas.ColorLike
+    end_color  : fantas.ColorLike
+    start_pos  : fantas.Point
+    end_pos    : fantas.Point
+
+    command: fantas.LinearGradientRenderCommand = field(init=False, repr=False)           # 渲染命令对象
+
+    def __post_init__(self):
+        """ 初始化 LinearGradientLabel 实例 """
+        self.command = fantas.LinearGradientRenderCommand(creator=self)
+
+    def create_render_commands(self, offset: fantas.Point = (0, 0)):
+        """
+        创建渲染命令列表
+        Args:
+            offset (fantas.Point): 当前元素的偏移位置，用于计算子元素的绝对位置。
+        Yields:
+            RenderCommand: 渲染命令对象。
+        """
+        # 计算渲染命令矩形
+        if isinstance(self.rect, fantas.Rect):
+            rect = fantas.IntRect(self.rect).move(offset)
+        else:
+            rect = self.rect.move(offset)
+        # 简化引用
+        c = self.command
+        # 设置渲染命令属性
+        c.rect = rect
+        c.start_color = self.start_color
+        c.end_color = self.end_color
+        c.start_pos = (self.start_pos[0] + offset[0], self.start_pos[1] + offset[1])
+        c.end_pos = (self.end_pos[0] + offset[0], self.end_pos[1] + offset[1])
+        # 生成渲染命令
+        yield c
+        # 生成子元素的渲染命令
+        yield from UI.create_render_commands(self, offset)
+    
+    def mark_cache_dirty(self):
+        """ 标记渲染命令缓存为脏，需重新生成缓存 """
+        self.command.cache_dirty = True

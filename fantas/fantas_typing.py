@@ -2,7 +2,7 @@ from typing import TypeAlias, Callable
 import pygame
 
 __all__ = (
-    "Surface",
+    "Surface", "PixelArray",
     "RectLike", "Rect", "IntRect",
     "ColorLike", "Color",
     "Point", "IntPoint",
@@ -14,7 +14,8 @@ __all__ = (
     "TextStyleFlag",
 )
 
-from pygame import Surface          # 表面类
+from pygame import Surface       # 表面类
+from pygame import PixelArray    # 像素数组类
 
 RectLike:  TypeAlias = pygame.typing.RectLike        # 矩形类型
 from pygame import FRect as Rect, Rect as IntRect    # 矩形类

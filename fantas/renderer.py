@@ -14,6 +14,7 @@ __all__ = (
     "LabelRenderCommand",
     "TextRenderCommand",
     "QuarterCircleRenderCommand",
+    "LinearGradientRenderCommand",
 )
 
 @dataclass(slots=True)
@@ -106,9 +107,9 @@ class SurfaceRenderCommand(RenderCommand):
         fill_mode: 填充模式。
         dest_rect: 目标矩形区域。
     """
-    surface  : fantas.Surface
-    dest_rect: fantas.RectLike
-    fill_mode: fantas.FillMode = fantas.FillMode.IGNORE
+    surface  : fantas.Surface  = field(init=False)
+    dest_rect: fantas.RectLike = field(init=False)
+    fill_mode: fantas.FillMode = field(init=False)
 
     affected_area: fantas.RectLike = field(init=False, repr=False)                 # 受影响的矩形区域
 
@@ -236,8 +237,8 @@ class ColorFillCommand(RenderCommand):
         dest_rect: 目标矩形区域。
         color    : 填充颜色。
     """
-    dest_rect: fantas.RectLike
-    color    : fantas.ColorLike = 'black'
+    dest_rect: fantas.RectLike  = field(init=False)
+    color    : fantas.ColorLike = field(init=False)
 
     def render(self, target_surface: fantas.Surface):
         """
@@ -263,7 +264,7 @@ class ColorBackgroundFillCommand(RenderCommand):
     Args:
         color: 填充颜色。
     """
-    color    : fantas.ColorLike = 'black'
+    color    : fantas.ColorLike = field(init=False)
 
     def render(self, target_surface: fantas.Surface):
         """
@@ -332,10 +333,10 @@ class TextRenderCommand(RenderCommand):
         style     : 文本样式。
         rect      : 渲染区域。
     """
-    text      : str                  = 'text'
-    align_mode: fantas.TextAlignMode = fantas.TextAlignMode.LEFT
-    style     : fantas.TextStyle     = field(default_factory=lambda: fantas.DEFAULTTEXTSTYLE)
-    rect      : fantas.RectLike      = field(default_factory=lambda: fantas.Rect(0, 0, 100, 0))
+    text      : str                  = field(init=False)
+    align_mode: fantas.TextAlignMode = field(init=False)
+    style     : fantas.TextStyle     = field(init=False)
+    rect      : fantas.RectLike      = field(init=False)
 
     affected_rects: list[fantas.RectLike] = field(default_factory=list, init=False, repr=False)    # 受影响的矩形区域列表
 
@@ -699,3 +700,98 @@ class QuarterCircleRenderCommand(RenderCommand):
             return False
         # 距离测试
         return self.radius * self.radius >= dx * dx + dy * dy >= self.width * self.width
+
+@dataclass(slots=True)
+class LinearGradientRenderCommand(RenderCommand):
+    """
+    线性渐变渲染命令类。
+    Args:
+        rect       : 渲染区域。
+        start_color: 起始颜色。
+        end_color  : 结束颜色。
+        start_pos  : 起始位置。
+        end_pos    : 结束位置。
+    """
+    rect       : fantas.RectLike  = field(init=False)
+    start_color: fantas.ColorLike = field(init=False)
+    end_color  : fantas.ColorLike = field(init=False)
+    start_pos  : fantas.Point     = field(init=False)
+    end_pos    : fantas.Point     = field(init=False)
+
+    cache_dirty: bool = field(default=True, init=False, repr=False)                       # 缓存是否脏标志
+    surface_cache: fantas.Surface | None = field(default=None, init=False, repr=False)    # 表面缓存
+
+    def render(self, target_surface: fantas.Surface):
+        """
+        执行线性渐变渲染操作。
+        Args:
+            target_surface (fantas.Surface): 目标 Surface 对象。
+        """
+        # 检查缓存是否脏
+        if self.cache_dirty:
+            # 重新生成缓存
+            self.cache_dirty = False
+            if self.surface_cache is None or self.surface_cache.get_size() != self.rect.size:
+                if self.start_color.a == 255 and self.end_color.a == 255:
+                    self.surface_cache = fantas.Surface(self.rect.size)
+                else:
+                    self.surface_cache = fantas.Surface(self.rect.size, flags=fantas.SRCALPHA)
+            if not isinstance(self.start_pos, fantas.math.Vector2):
+                self.start_pos = fantas.math.Vector2(self.start_pos)
+            if not isinstance(self.end_pos, fantas.math.Vector2):
+                self.end_pos = fantas.math.Vector2(self.end_pos)
+            # 选择渲染方法
+            LinearGradientRenderCommand_render_map[((self.start_pos.y == self.end_pos.y) << 1) | (self.start_pos.x == self.end_pos.x)](self)
+        # 绘制缓存到目标表面
+        target_surface.blit(self.surface_cache, self.rect)
+
+    def hit_test(self, point: fantas.IntPoint) -> bool:
+        """
+        命中测试。
+        Args:
+            point (fantas.IntPoint): 坐标点（x, y）。
+        Returns:
+            bool: 如果点在区域内则返回 True，否则返回 False。
+        """
+        return self.rect.collidepoint(point)
+
+    def render_horizontal(self):
+        """
+        执行水平线性渐变渲染操作。
+        """
+        left_x = self.rect.left - self.start_pos.x
+        x2_x1 = self.end_pos.x - self.start_pos.x
+        with fantas.PixelArray(self.surface_cache) as pix:
+            for x in range(self.rect.width):
+                col = self.start_color.lerp(self.end_color, fantas.math.clamp((x + left_x) / x2_x1, 0, 1))
+                pix[x, :] = col
+
+    def render_vertical(self):
+        """
+        执行垂直线性渐变渲染操作。
+        """
+        top_y = self.rect.top - self.start_pos.y
+        y2_y1 = self.end_pos.y - self.start_pos.y
+        with fantas.PixelArray(self.surface_cache) as pix:
+            for y in range(self.rect.height):
+                col = self.start_color.lerp(self.end_color, fantas.math.clamp((y + top_y) / y2_y1, 0, 1))
+                pix[:, y] = col
+
+    def render_any_angle(self):
+        """
+        执行任意角度线性渐变渲染操作。
+        """
+        pass
+
+    def render_coinside(self):
+        """
+        执行起点和终点重合的线性渐变渲染操作。
+        """
+        self.surface_cache.fill(self.start_color.lerp(self.end_color, 0.5), self.rect)
+
+LinearGradientRenderCommand_render_map = {
+    0b00: LinearGradientRenderCommand.render_any_angle,
+    0b01: LinearGradientRenderCommand.render_vertical,
+    0b10: LinearGradientRenderCommand.render_horizontal,
+    0b11: LinearGradientRenderCommand.render_coinside,
+}
