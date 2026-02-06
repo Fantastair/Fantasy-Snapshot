@@ -111,6 +111,9 @@ class Debug:
                     fantas.event.post(debug_received_event)
                 else:
                     Debug.queue.put(pickle.loads(recv))
+            else:
+                # 避免忙等待
+                fantas.time.delay(100)
 
     @staticmethod
     def start_read_thread():

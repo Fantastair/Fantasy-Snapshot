@@ -294,17 +294,23 @@ class LabelRenderCommand(RenderCommand):
     style: fantas.LabelStyle = field(init=False)
     rect : fantas.RectLike   = field(init=False)
 
-    affected_rects: list[fantas.RectLike] = field(init=False, repr=False)                         # 受影响的矩形区域
-    affected_qc   : list[tuple[fantas.Quadrant, float, float]] = field(init=False, repr=False)    # 受影响的圆角区域
-
     def render(self, target_surface: fantas.Surface):
         """
         执行渲染操作。
         Args:
             target_surface (fantas.Surface): 目标 Surface 对象。
         """
-        pass
-
+        s = self.style
+        rect = self.rect
+        bw = s.border_width
+        if bw > 0:
+            fantas.draw.aarect(target_surface, s.fgcolor, rect, bw, s.border_radius, s.border_radius_top_left, s.border_radius_top_right, s.border_radius_bottom_left, s.border_radius_bottom_right)
+            rect = rect.inflate(-2 * bw, -2 * bw)
+        if s.bgcolor is not None:
+            if s.border_radius_top_left >= 0 or s.border_radius_top_right >= 0 or s.border_radius_bottom_left >= 0 or s.border_radius_bottom_right >= 0:
+                fantas.draw.aarect(target_surface, s.bgcolor, rect, 0, s.border_radius - bw, max(0, s.border_radius_top_left - bw), max(0, s.border_radius_top_right - bw), max(0, s.border_radius_bottom_left - bw), max(0, s.border_radius_bottom_right - bw))
+            else:
+                fantas.draw.aarect(target_surface, s.bgcolor, rect, 0, s.border_radius - bw, s.border_radius_top_left - bw)
 
     def hit_test(self, point: fantas.IntPoint) -> bool:
         """
@@ -314,7 +320,7 @@ class LabelRenderCommand(RenderCommand):
         Returns:
             bool: 如果点在区域内则返回 True，否则返回 False。
         """
-        pass
+        return self.rect.collidepoint(point)
 
 @dataclass(slots=True)
 class TextRenderCommand(RenderCommand):
@@ -370,18 +376,19 @@ class TextRenderCommand(RenderCommand):
         ar = self.affected_rects
         ar_append = ar.append
         rect = self.rect
-        line_height = font.get_sized_height(size) + self.line_spacing
+        font_ascender = font.get_sized_ascender(size)
+        line_height = font.get_sized_height(size) + s.line_spacing
         # 清空受影响矩形列表
         ar.clear()
         # 计算换行结果
         wraps = s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width)
         # 计算渲染原点及范围
         origin_x = rect.left
-        origin_y = rect.centery - (len(wraps) * line_height - self.line_spacing) // 2
-        min_y = rect.top + font.get_sized_ascender(size)
+        origin_y = rect.centery - (len(wraps) * line_height - s.line_spacing) // 2 + font_ascender
+        min_y = rect.top + font_ascender
         max_y = rect.bottom + font.get_sized_descender(size)
         # 执行渲染
-        for text, _ in reversed(wraps):
+        for text, _ in wraps:
             if origin_y >= min_y:
                 ar_append(font.render_to(target_surface, (origin_x, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
             origin_y += line_height
@@ -402,17 +409,18 @@ class TextRenderCommand(RenderCommand):
         ar_append = ar.append
         rect = self.rect
         centerx = rect.centerx
-        line_height = font.get_sized_height(size) + self.line_spacing
+        font_ascender = font.get_sized_ascender(size)
+        line_height = font.get_sized_height(size) + s.line_spacing
         # 清空受影响矩形列表
         ar.clear()
         # 计算换行结果
         wraps = s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width)
         # 计算渲染原点及范围
-        origin_y = rect.centery - (len(wraps) * line_height - self.line_spacing) // 2
-        min_y = rect.top + font.get_sized_ascender(size)
+        origin_y = rect.centery - (len(wraps) * line_height - s.line_spacing) // 2 + font_ascender
+        min_y = rect.top + font_ascender
         max_y = rect.bottom + font.get_sized_descender(size)
         # 执行渲染
-        for text, width in reversed(wraps):
+        for text, width in wraps:
             if origin_y >= min_y:
                 ar_append(font.render_to(target_surface, (centerx - width // 2, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
             origin_y += line_height
@@ -433,17 +441,18 @@ class TextRenderCommand(RenderCommand):
         ar_append = ar.append
         rect = self.rect
         right = rect.right
-        line_height = font.get_sized_height(size) + self.line_spacing
+        font_ascender = font.get_sized_ascender(size)
+        line_height = font.get_sized_height(size) + s.line_spacing
         # 清空受影响矩形列表
         ar.clear()
         # 计算换行结果
         wraps = s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width)
         # 计算渲染原点及范围
-        origin_y = rect.centery - (len(wraps) * line_height - self.line_spacing) // 2
-        min_y = rect.top + font.get_sized_ascender(size)
+        origin_y = rect.centery - (len(wraps) * line_height - s.line_spacing) // 2 + font_ascender
+        min_y = rect.top + font_ascender
         max_y = rect.bottom + font.get_sized_descender(size)
         # 执行渲染
-        for text, width in reversed(wraps):
+        for text, width in wraps:
             if origin_y >= min_y:
                 ar_append(font.render_to(target_surface, (right - width, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
             origin_y += line_height
@@ -464,7 +473,7 @@ class TextRenderCommand(RenderCommand):
         ar_append = ar.append
         rect = self.rect
         centerx = rect.centerx
-        line_height = font.get_sized_height(size) + self.line_spacing
+        line_height = font.get_sized_height(size) + s.line_spacing
         # 清空受影响矩形列表
         ar.clear()
         # 计算换行结果
@@ -473,7 +482,7 @@ class TextRenderCommand(RenderCommand):
         origin_y = rect.top + font.get_sized_ascender(size)
         max_y = rect.bottom + font.get_sized_descender(size)
         # 执行渲染
-        for text, width in reversed(wraps):
+        for text, width in wraps:
             ar_append(font.render_to(target_surface, (centerx - width // 2, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
             origin_y += line_height
             if origin_y > max_y:
@@ -493,17 +502,18 @@ class TextRenderCommand(RenderCommand):
         ar_append = ar.append
         rect = self.rect
         centerx = rect.centerx
-        line_height = font.get_sized_height(size) + self.line_spacing
+        font_ascender = font.get_sized_ascender(size)
+        line_height = font.get_sized_height(size) + s.line_spacing
         # 清空受影响矩形列表
         ar.clear()
         # 计算换行结果
         wraps = s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width)
         # 计算渲染原点及范围
-        min_y = rect.top + font.get_sized_ascender(size)
+        min_y = rect.top + font_ascender
         max_y = rect.bottom + font.get_sized_descender(size)
-        origin_y = max_y - len(wraps) * line_height + self.line_spacing
+        origin_y = rect.bottom - len(wraps) * line_height + s.line_spacing + font_ascender
         # 执行渲染
-        for text, width in reversed(wraps):
+        for text, width in wraps:
             if origin_y >= min_y:
                 ar_append(font.render_to(target_surface, (centerx - width // 2, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
             origin_y += line_height
@@ -521,7 +531,7 @@ class TextRenderCommand(RenderCommand):
         ar = self.affected_rects
         ar_append = ar.append
         rect = self.rect
-        line_height = font.get_sized_height(size) + self.line_spacing
+        line_height = font.get_sized_height(size) + s.line_spacing
         # 清空受影响矩形列表
         ar.clear()
         # 计算换行结果
@@ -531,7 +541,7 @@ class TextRenderCommand(RenderCommand):
         origin_y = rect.top + font.get_sized_ascender(size)
         max_y = rect.bottom + font.get_sized_descender(size)
         # 执行渲染
-        for text, _ in reversed(wraps):
+        for text, _ in wraps:
             ar_append(font.render_to(target_surface, (origin_x, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
             origin_y += line_height
             if origin_y > max_y:
@@ -551,7 +561,7 @@ class TextRenderCommand(RenderCommand):
         ar_append = ar.append
         rect = self.rect
         right = rect.right
-        line_height = font.get_sized_height(size) + self.line_spacing
+        line_height = font.get_sized_height(size) + s.line_spacing
         # 清空受影响矩形列表
         ar.clear()
         # 计算换行结果
@@ -560,7 +570,7 @@ class TextRenderCommand(RenderCommand):
         origin_y = rect.top + font.get_sized_ascender(size)
         max_y = rect.bottom + font.get_sized_descender(size)
         # 执行渲染
-        for text, width in reversed(wraps):
+        for text, width in wraps:
             ar_append(font.render_to(target_surface, (right - width, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
             origin_y += line_height
             if origin_y > max_y:
@@ -579,18 +589,19 @@ class TextRenderCommand(RenderCommand):
         ar = self.affected_rects
         ar_append = ar.append
         rect = self.rect
-        line_height = font.get_sized_height(size) + self.line_spacing
+        font_ascender = font.get_sized_ascender(size)
+        line_height = font.get_sized_height(size) + s.line_spacing
         # 清空受影响矩形列表
         ar.clear()
         # 计算换行结果
         wraps = s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width)
         # 计算渲染原点及范围
         origin_x = rect.left
-        min_y = rect.top + font.get_sized_ascender(size)
+        min_y = rect.top + font_ascender
         max_y = rect.bottom + font.get_sized_descender(size)
-        origin_y = max_y - len(wraps) * line_height + self.line_spacing
+        origin_y = rect.bottom - len(wraps) * line_height + s.line_spacing + font_ascender
         # 执行渲染
-        for text, _ in reversed(wraps):
+        for text, _ in wraps:
             if origin_y >= min_y:
                 ar_append(font.render_to(target_surface, (origin_x, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
             origin_y += line_height
@@ -609,17 +620,18 @@ class TextRenderCommand(RenderCommand):
         ar_append = ar.append
         rect = self.rect
         right = rect.right
-        line_height = font.get_sized_height(size) + self.line_spacing
+        font_ascender = font.get_sized_ascender(size)
+        line_height = font.get_sized_height(size) + s.line_spacing
         # 清空受影响矩形列表
         ar.clear()
         # 计算换行结果
         wraps = s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width)
         # 计算渲染原点及范围
-        min_y = rect.top + font.get_sized_ascender(size)
+        min_y = rect.top + font_ascender
         max_y = rect.bottom + font.get_sized_descender(size)
-        origin_y = max_y - len(wraps) * line_height + self.line_spacing
+        origin_y = rect.bottom - len(wraps) * line_height + s.line_spacing + font_ascender
         # 执行渲染
-        for text, width in reversed(wraps):
+        for text, width in wraps:
             if origin_y >= min_y:
                 ar_append(font.render_to(target_surface, (right - width, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
             origin_y += line_height

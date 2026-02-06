@@ -140,6 +140,7 @@ class Window(PygameWindow):
         self.add_event_listener(fantas.DEBUGRECEIVED, root_ui, True, self.handle_debug_received_event)
         # 监听鼠标移动事件
         if fantas.DebugFlag.MOUSEMAGNIFY in fantas.Debug.debug_flag:
+            self.mouse_magnify_ratio = 8
             self.add_event_listener(fantas.MOUSEMOTION, root_ui, True, self.debug_send_mouse_surface)
         # 创建调试计时器
         self.debug_timer = debug_timer = DebugTimer()
@@ -213,8 +214,14 @@ class Window(PygameWindow):
             data = fantas.Debug.queue.get()
             if data[0] == "CloseDebugWindow":
                 fantas.Debug.delete_debug_flag(data[1])
+            elif data[0] == "SetMouseMagnifyRatio":
+                self.mouse_magnify_ratio = data[1]
+                pass
             else:
-                print(f"[{data[0]}] {data[1:]}")
+                print(f"[{data[0]}]", end='')
+                for d in data[1:]:
+                    print(f" {d}", end='')
+                print()
         self.debug_timer.record("Debug")
 
     def debug_send_mouse_surface(self, event: fantas.Event):
@@ -225,7 +232,7 @@ class Window(PygameWindow):
         """
         # 获取鼠标位置附近的 Surface 截图
         self.debug_timer.record("Event")
-        size = 32
+        size = 256 // self.mouse_magnify_ratio
         pos = list(event.pos)
         pos[0] = fantas.math.clamp(pos[0], 0, self.size[0] - 1)
         pos[1] = fantas.math.clamp(pos[1], 0, self.size[1] - 1)

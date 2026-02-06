@@ -98,7 +98,7 @@ class FontLoader(ResourceLoader[fantas.Font]):
         font.kerning = True
         self._resources[alias if alias else path.stem] = font
 
-    _default_sysfont = None
+    _default_sysfont: fantas.Font | None = None
     def get_default_sysfont(self) -> fantas.Font:
         """ 获取默认系统字体。 """
         if self._default_sysfont is None:

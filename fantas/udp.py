@@ -53,4 +53,6 @@ def udp_receive_data(udp_socket: socket.socket, buffer_size: int = 65535) -> tup
         data, addr = udp_socket.recvfrom(buffer_size)
     except socket.timeout:
         return None, None
+    except ConnectionResetError:
+        return None, None
     return data, addr
