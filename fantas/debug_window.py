@@ -81,24 +81,17 @@ class EventLogWindow(fantas.Window):
         self.append(self.background)
 
         self.text = fantas.Text(fantas.Rect(10, 0, self.size[0] - 20, self.size[1]), '', align_mode=fantas.TextAlignMode.BOTTOMLEFT)
+        if fantas.platform.system() == "Linux":
+            self.text.offset[1] = -3
         self.background.append(self.text)
-
-        self.top_gradient = fantas.LinearGradientLabel(
-            rect = fantas.Rect(0, 0, self.size[0], 64),
-            start_color = fantas.Color(0, 0, 0, 255),
-            end_color   = fantas.Color(0, 0, 0, 0),
-            start_pos=(0, 0),
-            end_pos=(0, 64),
-        )
-        self.background.append(self.top_gradient)
 
         self.lines: deque[str] = deque(maxlen=32)
         self.add_event_listener(fantas.WINDOWRESIZED, self.root_ui, True, self.handle_WINDOWRESIZED_event)
         self.add_event_listener(fantas.WINDOWCLOSE, self.root_ui, True, self.handle_WINDOWCLOSE_event)
 
-        self.log_kf = fantas.AttrKeyFrame(0, self.text.rect, 'height', self.size[1], fantas.CURVE_SLOWER)
+        self.log_kf = fantas.AttrKeyFrame(self.text.rect, 'height', self.size[1], fantas.CURVE_SLOWER)
         self.log_kf.start_value = self.size[1]
-        self.log_kf.set_target_time_ms(300)
+        self.log_kf.set_duration_ms(300)
 
     def log_event(self, event_str: str):
         """
@@ -110,7 +103,7 @@ class EventLogWindow(fantas.Window):
         self.lines.append(event_str)
         self.text.text = '\n---\n'.join(self.lines)
         # 调整文本区域高度（目的是保持新文本添加后原来的文本位置不变，然后通过关键帧动画平滑过渡）        
-        s = self.text.style
+        s = self.text.text_style
         self.text.rect.height += len(s.font.auto_wrap(s.style_flag, s.size, event_str, self.text.rect.width)) * self.text.line_height + self.text.line_height
         # 如果文本高度过大，则保持关键帧不重启
         # 快速结束动画，防止记录被截断（最大深度只有32条）
@@ -131,9 +124,6 @@ class EventLogWindow(fantas.Window):
         self.text.rect.width = event.x - 20
         self.text.rect.height = event.y
         self.log_kf.end_value = self.log_kf.start_value = event.y
-        if event.x != self.top_gradient.rect.width:
-            self.top_gradient.rect.width = event.x
-            self.top_gradient.mark_cache_dirty()
 
     def handle_WINDOWCLOSE_event(self, event: fantas.Event):
         """
@@ -186,35 +176,43 @@ class TimeRecordWindow(fantas.Window):
 
         self.fps_text = fantas.Text(fantas.Rect(8, 6, 110, 30), "FPS: 0.0")
         self.background.append(self.fps_text)
+        if fantas.platform.system() == "Linux":
+            self.fps_text.offset[1] = -3
 
-        self.legend_text = fantas.Text(fantas.Rect(50, 45, 100, 30 * len(TimeRecordWindow.time_category)))
+        self.legend_text = fantas.Text(fantas.Rect(50, 70 - fantas.DEFAULTTEXTSTYLE.font.get_sized_ascender(fantas.DEFAULTTEXTSTYLE.size), 100, 30 * len(TimeRecordWindow.time_category) + 1))
         self.legend_text.line_height = 30
+        if fantas.platform.system() == "Linux":
+            self.legend_text.offset[1] = -3
         text = ""
         for i, (key, desc) in enumerate(TimeRecordWindow.time_category.items()):
             legend_color = fantas.colors.get(f"{key}_legend_color")
             legend = fantas.Label(rect=fantas.Rect(10, 50 + i*30, 20, 20))
-            legend.style.bgcolor      = legend_color
-            legend.style.fgcolor      = fantas.colors.get("debug_fg")
-            legend.style.border_width = 2
+            legend.label_style.bgcolor      = legend_color
+            legend.label_style.fgcolor      = fantas.colors.get("debug_fg")
+            legend.label_style.border_width = 2
             self.background.append(legend)
             text += f"{desc}\n"
         self.legend_text.text = text.strip()
         self.background.append(self.legend_text)
         self.times = {key: 0.0 for key in TimeRecordWindow.time_category.keys()}
-        self.time_text = fantas.Text(fantas.Rect(160, 45, 100, 30 * len(TimeRecordWindow.time_category)), '')
-        self.time_text.style.line_spacing = 1
+        self.time_text = fantas.Text(fantas.Rect(160, 70 - fantas.DEFAULTTEXTSTYLE.font.get_sized_ascender(fantas.DEFAULTTEXTSTYLE.size), 100, 30 * len(TimeRecordWindow.time_category) + 1), '')
+        self.time_text.text_style.line_spacing = 1
         self.time_text.line_height = 30
+        if fantas.platform.system() == "Linux":
+            self.time_text.offset[1] = -3
         self.background.append(self.time_text)
         self.ratios = {key: 0.0 for key in TimeRecordWindow.time_category.keys()}
         self.time_ratio_bars = {}
         for i, key in enumerate(TimeRecordWindow.time_category.keys()):
             bar1 = fantas.Label(rect=fantas.Rect(100, 10, 100, 20))
-            bar1.style.bgcolor=fantas.colors.get(f"{key}_legend_color")
+            bar1.label_style.bgcolor=fantas.colors.get(f"{key}_legend_color")
             self.background.append(bar1)
             bar2 = fantas.Label(rect=fantas.Rect(260, 50 + i*30,  self.size[0] - 270, 20))
-            bar2.style.bgcolor=fantas.colors.get(f"{key}_legend_color")
+            bar2.label_style.bgcolor=fantas.colors.get(f"{key}_legend_color")
+            bar2.label_style.border_radius_top_right = bar2.label_style.border_radius_bottom_right = 4
             self.background.append(bar2)
             self.time_ratio_bars[key] = (bar1, bar2)
+        bar1.label_style.border_radius_top_right = bar1.label_style.border_radius_bottom_right = 4
         self.add_event_listener(fantas.WINDOWRESIZED, self.root_ui, True, self.handle_WINDOWRESIZED_event)
         self.add_event_listener(fantas.WINDOWCLOSE, self.root_ui, True, self.handle_WINDOWCLOSE_event)
 
@@ -285,7 +283,10 @@ class MouseMagnifyWindow(fantas.Window):
 
         self.ratio = 8
         self.cursor_color = None
-        self.text = fantas.Text(fantas.Rect(10, 0, 180, 64), f"放大倍数: {self.ratio}x\n鼠标颜色：{self.cursor_color}")
+        self.text = fantas.Text(fantas.Rect(10, 0, 190, 64), f"放大倍数：{self.ratio}x\n鼠标颜色：{self.cursor_color}")
+        self.text.line_height = 32
+        if fantas.platform.system() == "Linux":
+            self.text.offset[1] = -3
         self.background.append(self.text)
 
         self.mouse_shot_img = fantas.Image(
@@ -297,13 +298,13 @@ class MouseMagnifyWindow(fantas.Window):
         self.background.append(self.mouse_shot_img)
 
         self.cursor = fantas.Label(fantas.Rect(0, 0, self.ratio, self.ratio))
-        self.cursor.style.bgcolor = None
-        self.cursor.style.border_width = 1
+        self.cursor.label_style.bgcolor = None
+        self.cursor.label_style.border_width = 1
         self.mouse_shot_img.append(self.cursor)
         self.cursor.rect.center = self.mouse_shot_img.rect.width / 2, self.mouse_shot_img.rect.height / 2
         self.cursor_color_label = fantas.Label(fantas.Rect(0, 0, 48, 48))
-        self.cursor_color_label.style.border_width = 2
-        self.cursor_color_label.style.fgcolor = fantas.colors.get("debug_fg")
+        self.cursor_color_label.label_style.border_width = 2
+        self.cursor_color_label.label_style.fgcolor = fantas.colors.get("debug_fg")
         self.cursor_color_label.rect.midright = (self.size[0] - 10, 32)
         self.background.append(self.cursor_color_label)
 
@@ -328,8 +329,8 @@ class MouseMagnifyWindow(fantas.Window):
         self.cursor.rect.left = x * self.ratio
         self.cursor.rect.top  = y * self.ratio
         self.cursor_color = self.mouse_shot_img.surface.get_at((x, y))
-        self.cursor.style.fgcolor = fantas.get_distinct_blackorwhite(self.cursor_color)
-        self.cursor_color_label.style.bgcolor = self.cursor_color
+        self.cursor.label_style.fgcolor = fantas.get_distinct_blackorwhite(self.cursor_color)
+        self.cursor_color_label.label_style.bgcolor = self.cursor_color
         self.update_text()
 
     def handle_WINDOWCLOSE_event(self, event: fantas.Event):

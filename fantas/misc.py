@@ -1,3 +1,4 @@
+import platform
 from pathlib   import Path
 from itertools import count
 from importlib import resources
@@ -5,6 +6,7 @@ from functools import lru_cache, wraps
 from time import perf_counter_ns as get_time_ns
 
 __all__ = (
+    "platform",
     "get_time_ns",
     "package_path",
     "generate_unique_id",

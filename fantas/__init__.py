@@ -41,6 +41,7 @@ import pygame.display   as display
 import pygame.transform as transform
 
 # 导入 fantas 包的各个子模块
+from fantas.version       import *    # 版本信息
 from fantas.misc          import *    # 杂项工具
 from fantas.fantas_typing import *    # 类型定义
 from fantas.constants     import *    # 常量定义

@@ -12,6 +12,7 @@ __all__ = (
     "ListenerKey", "ListenerFunc", "ListenerDict",
     "QuadrantMask",
     "TextStyleFlag",
+    "BlendFlag",
 )
 
 from pygame import Surface       # 表面类
@@ -39,3 +40,5 @@ ListenerDict: TypeAlias = dict[ListenerKey, list[ListenerFunc]]    # 监听器�
 QuadrantMask: TypeAlias = int    # 象限掩码类型，是 fantas.Quadrant 通过或运算得到的值
 
 TextStyleFlag: TypeAlias = int    # 文本风格标志类型，加粗、斜体等，TEXTSTYLEFLAG_* 常量或它们的 或运算 结果
+
+BlendFlag: TypeAlias = int    # 混合标志类型，BLEND_* 常量

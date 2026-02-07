@@ -237,8 +237,9 @@ class ColorFillCommand(RenderCommand):
         dest_rect: 目标矩形区域。
         color    : 填充颜色。
     """
-    dest_rect: fantas.RectLike  = field(init=False)
-    color    : fantas.ColorLike = field(init=False)
+    dest_rect : fantas.RectLike  = field(init=False)
+    color     : fantas.ColorLike = field(init=False)
+    blend_flag: fantas.BlendFlag = field(init=False)
 
     def render(self, target_surface: fantas.Surface):
         """
@@ -246,7 +247,7 @@ class ColorFillCommand(RenderCommand):
         Args:
             target_surface (fantas.Surface): 目标 Surface 对象。
         """
-        target_surface.fill(self.color, self.dest_rect)
+        target_surface.fill(self.color, self.dest_rect, self.blend_flag)
 
     def hit_test(self, point: fantas.IntPoint) -> bool:
         """
@@ -264,7 +265,7 @@ class ColorBackgroundFillCommand(RenderCommand):
     Args:
         color: 填充颜色。
     """
-    color    : fantas.ColorLike = field(init=False)
+    color: fantas.ColorLike = field(init=False)
 
     def render(self, target_surface: fantas.Surface):
         """
@@ -337,6 +338,7 @@ class TextRenderCommand(RenderCommand):
     align_mode: fantas.TextAlignMode = field(init=False)
     style     : fantas.TextStyle     = field(init=False)
     rect      : fantas.RectLike      = field(init=False)
+    offset    : fantas.IntPoint      = field(init=False)
 
     affected_rects: list[fantas.RectLike] = field(default_factory=list, init=False, repr=False)    # 受影响的矩形区域列表
 
@@ -346,6 +348,9 @@ class TextRenderCommand(RenderCommand):
         Args:
             target_surface (fantas.Surface): 目标 Surface 对象。
         """
+        # 文本为空则不渲染
+        if not self.text:
+            return
         # 简化引用
         s = self.style
         # 执行渲染
@@ -378,23 +383,29 @@ class TextRenderCommand(RenderCommand):
         ar_append = ar.append
         rect = self.rect
         font_ascender = font.get_sized_ascender(size)
+        font_descender = font.get_sized_descender(size)
         line_height = font.get_sized_height(size) + s.line_spacing
         # 清空受影响矩形列表
         ar.clear()
         # 计算换行结果
         wraps = s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width)
         # 计算渲染原点及范围
-        origin_x = rect.left
-        origin_y = rect.centery - (len(wraps) * line_height - s.line_spacing) // 2 + font_ascender
-        min_y = rect.top + font_ascender
-        max_y = rect.bottom + font.get_sized_descender(size)
+        origin_x = rect.left + self.offset[0]
+        origin_y = rect.centery - (len(wraps) * line_height - s.line_spacing) // 2 + font_ascender + self.offset[1]
+        full_min_y = rect.top + font_ascender        # 全部可见时的最小 y 坐标
+        full_max_y = rect.bottom + font_descender    # 全部可见时的最大 y 坐标
+        part_min_y = full_min_y - line_height        # 部分可见时的最小 y 坐标
+        part_max_y = full_max_y + line_height        # 部分可见时的最大 y 坐标
         # 执行渲染
-        for text, _ in wraps:
-            if origin_y >= min_y:
+        for text, width in wraps:
+            if full_min_y <= origin_y <= full_max_y:    # 完全可见，正常渲染
                 ar_append(font.render_to(target_surface, (origin_x, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+            elif part_min_y < origin_y < part_max_y:    # 部分可见，裁剪渲染
+                sf, rt = font.render(text, s.fgcolor, style=s.style_flag, size=size)
+                rt.topleft = (origin_x - rt.left, origin_y - rt.top)
+                r = rt.clip(rect)
+                ar_append(target_surface.blit(sf, r.topleft, (0, r.top - rt.top, r.width, r.height)))
             origin_y += line_height
-            if origin_y > max_y:
-                break
 
     def render_CENTER(self, target_surface: fantas.Surface):
         """
@@ -409,24 +420,30 @@ class TextRenderCommand(RenderCommand):
         ar = self.affected_rects
         ar_append = ar.append
         rect = self.rect
-        centerx = rect.centerx
         font_ascender = font.get_sized_ascender(size)
+        font_descender = font.get_sized_descender(size)
         line_height = font.get_sized_height(size) + s.line_spacing
         # 清空受影响矩形列表
         ar.clear()
         # 计算换行结果
         wraps = s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width)
         # 计算渲染原点及范围
-        origin_y = rect.centery - (len(wraps) * line_height - s.line_spacing) // 2 + font_ascender
-        min_y = rect.top + font_ascender
-        max_y = rect.bottom + font.get_sized_descender(size)
+        origin_x = rect.left + self.offset[0]
+        origin_y = rect.centery - (len(wraps) * line_height - s.line_spacing) // 2 + font_ascender + self.offset[1]
+        full_min_y = rect.top + font_ascender        # 全部可见时的最小 y 坐标
+        full_max_y = rect.bottom + font_descender    # 全部可见时的最大 y 坐标
+        part_min_y = full_min_y - line_height        # 部分可见时的最小 y 坐标
+        part_max_y = full_max_y + line_height        # 部分可见时的最大 y 坐标
         # 执行渲染
         for text, width in wraps:
-            if origin_y >= min_y:
-                ar_append(font.render_to(target_surface, (centerx - width // 2, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+            if full_min_y <= origin_y <= full_max_y:    # 完全可见，正常渲染
+                ar_append(font.render_to(target_surface, (origin_x + (rect.width - width) // 2, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+            elif part_min_y < origin_y < part_max_y:    # 部分可见，裁剪渲染
+                sf, rt = font.render(text, s.fgcolor, style=s.style_flag, size=size)
+                rt.topleft = (origin_x + (rect.width - width) // 2 - rt.left, origin_y - rt.top)
+                r = rt.clip(rect)
+                ar_append(target_surface.blit(sf, r.topleft, (0, r.top - rt.top, r.width, r.height)))
             origin_y += line_height
-            if origin_y > max_y:
-                break
 
     def render_RIGHT(self, target_surface: fantas.Surface, wraps: tuple[tuple[str, int]]):
         """
@@ -441,24 +458,30 @@ class TextRenderCommand(RenderCommand):
         ar = self.affected_rects
         ar_append = ar.append
         rect = self.rect
-        right = rect.right
         font_ascender = font.get_sized_ascender(size)
+        font_descender = font.get_sized_descender(size)
         line_height = font.get_sized_height(size) + s.line_spacing
         # 清空受影响矩形列表
         ar.clear()
         # 计算换行结果
         wraps = s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width)
         # 计算渲染原点及范围
-        origin_y = rect.centery - (len(wraps) * line_height - s.line_spacing) // 2 + font_ascender
-        min_y = rect.top + font_ascender
-        max_y = rect.bottom + font.get_sized_descender(size)
+        origin_x = rect.left + self.offset[0]
+        origin_y = rect.centery - (len(wraps) * line_height - s.line_spacing) // 2 + font_ascender + self.offset[1]
+        full_min_y = rect.top + font_ascender        # 全部可见时的最小 y 坐标
+        full_max_y = rect.bottom + font_descender    # 全部可见时的最大 y 坐标
+        part_min_y = full_min_y - line_height        # 部分可见时的最小 y 坐标
+        part_max_y = full_max_y + line_height        # 部分可见时的最大 y 坐标
         # 执行渲染
         for text, width in wraps:
-            if origin_y >= min_y:
-                ar_append(font.render_to(target_surface, (right - width, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+            if full_min_y <= origin_y <= full_max_y:    # 完全可见，正常渲染
+                ar_append(font.render_to(target_surface, (origin_x + rect.width - width, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+            elif part_min_y < origin_y < part_max_y:    # 部分可见，裁剪渲染
+                sf, rt = font.render(text, s.fgcolor, style=s.style_flag, size=size)
+                rt.topleft = (origin_x + rect.width - width - rt.left, origin_y - rt.top)
+                r = rt.clip(rect)
+                ar_append(target_surface.blit(sf, r.topleft, (0, r.top - rt.top, r.width, r.height)))
             origin_y += line_height
-            if origin_y > max_y:
-                break
     
     def render_TOP(self, target_surface: fantas.Surface):
         """
@@ -473,21 +496,30 @@ class TextRenderCommand(RenderCommand):
         ar = self.affected_rects
         ar_append = ar.append
         rect = self.rect
-        centerx = rect.centerx
+        font_ascender = font.get_sized_ascender(size)
+        font_descender = font.get_sized_descender(size)
         line_height = font.get_sized_height(size) + s.line_spacing
         # 清空受影响矩形列表
         ar.clear()
         # 计算换行结果
         wraps = s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width)
         # 计算渲染原点及范围
-        origin_y = rect.top + font.get_sized_ascender(size)
-        max_y = rect.bottom + font.get_sized_descender(size)
+        origin_x = rect.left + self.offset[0]
+        origin_y = rect.top + font_ascender + self.offset[1]
+        full_min_y = rect.top + font_ascender        # 全部可见时的最小 y 坐标
+        full_max_y = rect.bottom + font_descender    # 全部可见时的最大 y 坐标
+        part_min_y = full_min_y - line_height        # 部分可见时的最小 y 坐标
+        part_max_y = full_max_y + line_height        # 部分可见时的最大 y 坐标
         # 执行渲染
         for text, width in wraps:
-            ar_append(font.render_to(target_surface, (centerx - width // 2, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+            if full_min_y <= origin_y <= full_max_y:    # 完全可见，正常渲染
+                ar_append(font.render_to(target_surface, (origin_x + (rect.width - width) // 2, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+            elif part_min_y < origin_y < part_max_y:    # 部分可见，裁剪渲染
+                sf, rt = font.render(text, s.fgcolor, style=s.style_flag, size=size)
+                rt.topleft = (origin_x + (rect.width - width) // 2 - rt.left, origin_y - rt.top)
+                r = rt.clip(rect)
+                ar_append(target_surface.blit(sf, r.topleft, (0, r.top - rt.top, r.width, r.height)))
             origin_y += line_height
-            if origin_y > max_y:
-                break
     
     def render_BOTTOM(self, target_surface: fantas.Surface):
         """
@@ -502,21 +534,29 @@ class TextRenderCommand(RenderCommand):
         ar = self.affected_rects
         ar_append = ar.append
         rect = self.rect
-        centerx = rect.centerx
         font_ascender = font.get_sized_ascender(size)
+        font_descender = font.get_sized_descender(size)
         line_height = font.get_sized_height(size) + s.line_spacing
         # 清空受影响矩形列表
         ar.clear()
         # 计算换行结果
         wraps = s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width)
         # 计算渲染原点及范围
-        min_y = rect.top + font_ascender
-        max_y = rect.bottom + font.get_sized_descender(size)
-        origin_y = rect.bottom - len(wraps) * line_height + s.line_spacing + font_ascender
+        origin_x = rect.left + self.offset[0]
+        origin_y = rect.bottom - len(wraps) * line_height + s.line_spacing + font_ascender + self.offset[1]
+        full_min_y = rect.top + font_ascender        # 全部可见时的最小 y 坐标
+        full_max_y = rect.bottom + font_descender    # 全部可见时的最大 y 坐标
+        part_min_y = full_min_y - line_height        # 部分可见时的最小 y 坐标
+        part_max_y = full_max_y + line_height        # 部分可见时的最大 y 坐标
         # 执行渲染
         for text, width in wraps:
-            if origin_y >= min_y:
-                ar_append(font.render_to(target_surface, (centerx - width // 2, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+            if full_min_y <= origin_y <= full_max_y:    # 完全可见，正常渲染
+                ar_append(font.render_to(target_surface, (origin_x + (rect.width - width) // 2, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+            elif part_min_y < origin_y < part_max_y:    # 部分可见，裁剪渲染
+                sf, rt = font.render(text, s.fgcolor, style=s.style_flag, size=size)
+                rt.topleft = (origin_x + (rect.width - width) // 2 - rt.left, origin_y - rt.top)
+                r = rt.clip(rect)
+                ar_append(target_surface.blit(sf, r.topleft, (0, r.top - rt.top, r.width, r.height)))
             origin_y += line_height
     
     def render_TOPLEFT(self, target_surface: fantas.Surface):
@@ -532,21 +572,30 @@ class TextRenderCommand(RenderCommand):
         ar = self.affected_rects
         ar_append = ar.append
         rect = self.rect
+        font_ascender = font.get_sized_ascender(size)
+        font_descender = font.get_sized_descender(size)
         line_height = font.get_sized_height(size) + s.line_spacing
         # 清空受影响矩形列表
         ar.clear()
         # 计算换行结果
         wraps = s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width)
         # 计算渲染原点及范围
-        origin_x = rect.left
-        origin_y = rect.top + font.get_sized_ascender(size)
-        max_y = rect.bottom + font.get_sized_descender(size)
+        origin_x = rect.left + self.offset[0]
+        origin_y = rect.top + font_ascender + self.offset[1]
+        full_min_y = rect.top + font_ascender        # 全部可见时的最小 y 坐标
+        full_max_y = rect.bottom + font_descender    # 全部可见时的最大 y 坐标
+        part_min_y = full_min_y - line_height        # 部分可见时的最小 y 坐标
+        part_max_y = full_max_y + line_height        # 部分可见时的最大 y 坐标
         # 执行渲染
-        for text, _ in wraps:
-            ar_append(font.render_to(target_surface, (origin_x, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+        for text, width in wraps:
+            if full_min_y <= origin_y <= full_max_y:    # 完全可见，正常渲染
+                ar_append(font.render_to(target_surface, (origin_x, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+            elif part_min_y < origin_y < part_max_y:    # 部分可见，裁剪渲染
+                sf, rt = font.render(text, s.fgcolor, style=s.style_flag, size=size)
+                rt.topleft = (origin_x - rt.left, origin_y - rt.top)
+                r = rt.clip(rect)
+                ar_append(target_surface.blit(sf, r.topleft, (0, r.top - rt.top, r.width, r.height)))
             origin_y += line_height
-            if origin_y > max_y:
-                break
     
     def render_TOPRIGHT(self, target_surface: fantas.Surface):
         """
@@ -555,27 +604,37 @@ class TextRenderCommand(RenderCommand):
             target_surface (fantas.Surface): 目标 Surface 对象。
         """
         # 简化引用
+        # 简化引用
         s = self.style
         size = s.size
         font = s.font
         ar = self.affected_rects
         ar_append = ar.append
         rect = self.rect
-        right = rect.right
+        font_ascender = font.get_sized_ascender(size)
+        font_descender = font.get_sized_descender(size)
         line_height = font.get_sized_height(size) + s.line_spacing
         # 清空受影响矩形列表
         ar.clear()
         # 计算换行结果
         wraps = s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width)
         # 计算渲染原点及范围
-        origin_y = rect.top + font.get_sized_ascender(size)
-        max_y = rect.bottom + font.get_sized_descender(size)
+        origin_x = rect.left + self.offset[0]
+        origin_y = rect.top + font_ascender + self.offset[1]
+        full_min_y = rect.top + font_ascender        # 全部可见时的最小 y 坐标
+        full_max_y = rect.bottom + font_descender    # 全部可见时的最大 y 坐标
+        part_min_y = full_min_y - line_height        # 部分可见时的最小 y 坐标
+        part_max_y = full_max_y + line_height        # 部分可见时的最大 y 坐标
         # 执行渲染
         for text, width in wraps:
-            ar_append(font.render_to(target_surface, (right - width, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+            if full_min_y <= origin_y <= full_max_y:    # 完全可见，正常渲染
+                ar_append(font.render_to(target_surface, (origin_x + rect.width - width, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+            elif part_min_y < origin_y < part_max_y:    # 部分可见，裁剪渲染
+                sf, rt = font.render(text, s.fgcolor, style=s.style_flag, size=size)
+                rt.topleft = (origin_x + rect.width - width - rt.left, origin_y - rt.top)
+                r = rt.clip(rect)
+                ar_append(target_surface.blit(sf, r.topleft, (0, r.top - rt.top, r.width, r.height)))
             origin_y += line_height
-            if origin_y > max_y:
-                break
     
     def render_BOTTOMLEFT(self, target_surface: fantas.Surface):
         """
@@ -591,20 +650,28 @@ class TextRenderCommand(RenderCommand):
         ar_append = ar.append
         rect = self.rect
         font_ascender = font.get_sized_ascender(size)
+        font_descender = font.get_sized_descender(size)
         line_height = font.get_sized_height(size) + s.line_spacing
         # 清空受影响矩形列表
         ar.clear()
         # 计算换行结果
         wraps = s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width)
         # 计算渲染原点及范围
-        origin_x = rect.left
-        min_y = rect.top + font_ascender
-        max_y = rect.bottom + font.get_sized_descender(size)
-        origin_y = rect.bottom - len(wraps) * line_height + s.line_spacing + font_ascender
+        origin_x = rect.left + self.offset[0]
+        origin_y = rect.bottom - len(wraps) * line_height + s.line_spacing + font_ascender + self.offset[1]
+        full_min_y = rect.top + font_ascender        # 全部可见时的最小 y 坐标
+        full_max_y = rect.bottom + font_descender    # 全部可见时的最大 y 坐标
+        part_min_y = full_min_y - line_height        # 部分可见时的最小 y 坐标
+        part_max_y = full_max_y + line_height        # 部分可见时的最大 y 坐标
         # 执行渲染
-        for text, _ in wraps:
-            if origin_y >= min_y:
+        for text, width in wraps:
+            if full_min_y <= origin_y <= full_max_y:    # 完全可见，正常渲染
                 ar_append(font.render_to(target_surface, (origin_x, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+            elif part_min_y < origin_y < part_max_y:    # 部分可见，裁剪渲染
+                sf, rt = font.render(text, s.fgcolor, style=s.style_flag, size=size)
+                rt.topleft = (origin_x - rt.left, origin_y - rt.top)
+                r = rt.clip(rect)
+                ar_append(target_surface.blit(sf, r.topleft, (0, r.top - rt.top, r.width, r.height)))
             origin_y += line_height
     
     def render_BOTTOMRIGHT(self, target_surface: fantas.Surface):
@@ -620,21 +687,29 @@ class TextRenderCommand(RenderCommand):
         ar = self.affected_rects
         ar_append = ar.append
         rect = self.rect
-        right = rect.right
         font_ascender = font.get_sized_ascender(size)
+        font_descender = font.get_sized_descender(size)
         line_height = font.get_sized_height(size) + s.line_spacing
         # 清空受影响矩形列表
         ar.clear()
         # 计算换行结果
         wraps = s.font.auto_wrap(s.style_flag, s.size, self.text, self.rect.width)
         # 计算渲染原点及范围
-        min_y = rect.top + font_ascender
-        max_y = rect.bottom + font.get_sized_descender(size)
-        origin_y = rect.bottom - len(wraps) * line_height + s.line_spacing + font_ascender
+        origin_x = rect.left + self.offset[0]
+        origin_y = rect.bottom - len(wraps) * line_height + s.line_spacing + font_ascender + self.offset[1]
+        full_min_y = rect.top + font_ascender        # 全部可见时的最小 y 坐标
+        full_max_y = rect.bottom + font_descender    # 全部可见时的最大 y 坐标
+        part_min_y = full_min_y - line_height        # 部分可见时的最小 y 坐标
+        part_max_y = full_max_y + line_height        # 部分可见时的最大 y 坐标
         # 执行渲染
         for text, width in wraps:
-            if origin_y >= min_y:
-                ar_append(font.render_to(target_surface, (right - width, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+            if full_min_y <= origin_y <= full_max_y:    # 完全可见，正常渲染
+                ar_append(font.render_to(target_surface, (origin_x + rect.width - width, origin_y), text, s.fgcolor, style=s.style_flag, size=size))
+            elif part_min_y < origin_y < part_max_y:    # 部分可见，裁剪渲染
+                sf, rt = font.render(text, s.fgcolor, style=s.style_flag, size=size)
+                rt.topleft = (origin_x + rect.width - width - rt.left, origin_y - rt.top)
+                r = rt.clip(rect)
+                ar_append(target_surface.blit(sf, r.topleft, (0, r.top - rt.top, r.width, r.height)))
             origin_y += line_height
 
 # TextRenderCommand 渲染映射表
@@ -718,8 +793,9 @@ class LinearGradientRenderCommand(RenderCommand):
     start_pos  : fantas.Point     = field(init=False)
     end_pos    : fantas.Point     = field(init=False)
 
-    cache_dirty: bool = field(default=True, init=False, repr=False)                       # 缓存是否脏标志
+    cache_dirty  : bool                  = field(default=True, init=False, repr=False)    # 缓存是否脏标志
     surface_cache: fantas.Surface | None = field(default=None, init=False, repr=False)    # 表面缓存
+    last_pix     : int                   = field(default=0, init=False, repr=False)       # 上次渲染的坐标
 
     def render(self, target_surface: fantas.Surface):
         """
@@ -781,7 +857,24 @@ class LinearGradientRenderCommand(RenderCommand):
         """
         执行任意角度线性渐变渲染操作。
         """
-        pass
+        # 分步绘制时间点
+        t = fantas.get_time_ns()
+        # 计算xy方向的步长
+        v : fantas.math.Vector2 = self.end_pos - self.start_pos
+        v_length = v.length()
+        x_step = fantas.math.Vector2(1, 0).dot(v) / v_length
+        y_step = fantas.math.Vector2(0, 1).dot(v) / v_length
+        # 执行渲染
+        with fantas.PixelArray(self.surface_cache) as pix:
+            for x in range(self.last_pix, self.rect.width):
+                for y in range(self.rect.height):
+                    pix[x, y] = self.start_color.lerp(self.end_color, fantas.math.clamp(((x + self.rect.left - self.start_pos.x) * x_step + (y + self.rect.top - self.start_pos.y) * y_step) / v_length, 0, 1))
+                    # 单次绘制时间超过 10 毫秒，则标记缓存为脏并记录当前位置，退出绘制
+                    if fantas.get_time_ns() - t > 10_000_000:
+                        self.cache_dirty = True
+                        self.last_pix = x
+                        return
+        self.last_pix = 0
 
     def render_coinside(self):
         """

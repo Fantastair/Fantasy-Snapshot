@@ -84,13 +84,13 @@ class Label(UI):
     """
     纯色矩形标签类。
     Args:
-        rect    : 矩形区域。
-        style   : 标签样式。
-        box_mode: 盒子模式。
+        rect       : 矩形区域。
+        label_style: 标签样式。
+        box_mode   : 盒子模式。
     """
-    rect    : fantas.RectLike
-    style   : fantas.LabelStyle = field(default_factory=fantas.DEFAULTLABELSTYLE.copy)
-    box_mode: fantas.BoxMode    = fantas.BoxMode.INSIDE
+    rect       : fantas.RectLike
+    label_style: fantas.LabelStyle = field(default_factory=fantas.DEFAULTLABELSTYLE.copy)
+    box_mode   : fantas.BoxMode    = fantas.BoxMode.INSIDE
 
     command: fantas.LabelRenderCommand = field(init=False, repr=False)
 
@@ -111,14 +111,14 @@ class Label(UI):
             rect = fantas.IntRect(self.rect).move(offset)
         else:
             rect = self.rect.move(offset)
-        if self.style.border_width > 0:
+        if self.label_style.border_width > 0:
             if self.box_mode is fantas.BoxMode.OUTSIDE:
-                rect.inflate_ip(2 * self.style.border_width, 2 * self.style.border_width)
+                rect.inflate_ip(2 * self.label_style.border_width, 2 * self.label_style.border_width)
             elif self.box_mode is fantas.BoxMode.INOUTSIDE:
-                rect.inflate_ip(self.style.border_width, self.style.border_width)
+                rect.inflate_ip(self.label_style.border_width, self.label_style.border_width)
         self.command.rect = rect
         # 设置渲染命令样式
-        self.command.style = self.style
+        self.command.style = self.label_style
         # 生成渲染命令
         yield self.command
         # 生成子元素的渲染命令
@@ -171,16 +171,18 @@ class Text(UI):
     文本显示类。
     Args:
         text      : 显示的文本内容。
-        style     : 文本样式。
+        text_style: 文本样式。
         rect      : 文本显示区域。
         align_mode: 对齐模式。
+        offset    : 文本偏移位置。
     """
     children: None               = field(default=None, init=False, repr=False)    # 纯色文本不包含子元素
 
     rect      : fantas.RectLike
     text      : str                  = 'text'
-    style     : fantas.TextStyle     = field(default_factory=fantas.DEFAULTTEXTSTYLE.copy)
+    text_style     : fantas.TextStyle     = field(default_factory=fantas.DEFAULTTEXTSTYLE.copy)
     align_mode: fantas.TextAlignMode = fantas.TextAlignMode.LEFT
+    offset    : fantas.IntPoint      = field(default_factory=lambda: [0, 0])
 
     command : fantas.TextRenderCommand = field(init=False, repr=False)    # 渲染命令
 
@@ -201,26 +203,28 @@ class Text(UI):
             return
         # 简化引用
         rc = self.command
-        # 设置文本内容
-        rc.text = self.text
-        # 设置对齐模式
-        rc.align_mode = self.align_mode
-        # 设置文本样式
-        rc.style = self.style
         # 设置文本显示区域
         if isinstance(self.rect, fantas.Rect):
             rc.rect = fantas.IntRect(self.rect).move(offset)
         else:
             rc.rect = self.rect.move(offset)
+        # 设置文本内容
+        rc.text = self.text
+        # 设置文本样式
+        rc.style = self.text_style
+        # 设置对齐模式
+        rc.align_mode = self.align_mode
+        # 设置偏移位置
+        rc.offset = self.offset
         # 生成渲染命令
         yield rc
 
     def _get_lineheight(self) -> float:
         """ 获取文本行高（包含行间距） """
-        return self.style.font.get_sized_height(self.style.size) + self.style.line_spacing
+        return self.text_style.font.get_sized_height(self.text_style.size) + self.text_style.line_spacing
     def _set_lineheight(self, lineheight: float) -> None:
         """ 设置文本行高（包含行间距） """
-        self.style.line_spacing = lineheight - self.style.font.get_sized_height(self.style.size)
+        self.text_style.line_spacing = lineheight - self.text_style.font.get_sized_height(self.text_style.size)
     line_height = property(_get_lineheight, _set_lineheight)
 
 @dataclass(slots=True)
@@ -234,6 +238,7 @@ class TextLabel(UI):
         label_style: 标签样式。
         align_mode : 对齐模式。
         box_mode   : 盒子模式。
+        offset     : 文本偏移位置。
     """
     rect    : fantas.RectLike
 
@@ -242,6 +247,7 @@ class TextLabel(UI):
     label_style: fantas.LabelStyle    = field(default_factory=fantas.DEFAULTLABELSTYLE.copy)
     align_mode : fantas.TextAlignMode = fantas.TextAlignMode.LEFT
     box_mode   : fantas.BoxMode       = fantas.BoxMode.INSIDE
+    offset     : fantas.IntPoint      = field(default_factory=lambda: [0, 0])
 
     label_command: fantas.LabelRenderCommand = field(init=False, repr=False)    # 标签渲染命令
     text_command : fantas.TextRenderCommand = field(init=False, repr=False)     # 文本渲染命令
@@ -285,6 +291,8 @@ class TextLabel(UI):
             trc.align_mode = self.align_mode
             # 设置文本样式
             trc.style = self.text_style
+            # 设置偏移位置
+            trc.offset = self.offset
             # 生成渲染命令
             yield trc
         # 生成子元素的渲染命令
@@ -347,6 +355,7 @@ class LinearGradientLabel(UI):
         # 生成子元素的渲染命令
         yield from UI.create_render_commands(self, offset)
     
-    def mark_cache_dirty(self):
-        """ 标记渲染命令缓存为脏，需重新生成缓存 """
+    def mark_dirty(self):
+        """ 标记渲染缓存为脏 """
         self.command.cache_dirty = True
+        self.command.last_pix = 0
